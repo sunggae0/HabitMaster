@@ -1,0 +1,13 @@
+package com.example.habitmaster.feature.main
+
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.composable
+
+fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
+    composable("main") {
+        MainScreen(
+            onFinish = { navController.navigate("habit_list") }
+        )
+    }
+}
