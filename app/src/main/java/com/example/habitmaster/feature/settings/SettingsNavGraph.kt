@@ -5,7 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 
 fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
-    composable("onboarding") {
+    composable("settings") {
         SettingsScreen(
             onFinish = { navController.navigate("habit_list") }
         )
