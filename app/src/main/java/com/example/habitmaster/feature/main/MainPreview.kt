@@ -11,3 +11,16 @@ fun MainPreview() {
         MainScreen(onFinish = {})
     }
 }
+
+
+@Preview
+@Composable
+fun HabitCardPreview() {
+    HabitMasterTheme {
+        HabitCard(
+            "sizetest\nsize\nsize",
+            0.3f,
+            listOf(false, false, false, false, false, true, false)
+        )
+    }
+}
