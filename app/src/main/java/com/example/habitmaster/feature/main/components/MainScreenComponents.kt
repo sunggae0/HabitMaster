@@ -47,7 +47,7 @@ fun AddHabitFAB(onClick: () -> Unit) {
     ) {
         Canvas(modifier = Modifier.size(24.dp)) {
             // +
-            val strokeWidth = 4.dp.toPx()
+            val strokeWidth = 2.dp.toPx()
             val half = size.minDimension / 2
 
             // Vertical line
