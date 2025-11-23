@@ -1,13 +1,15 @@
 package com.example.habitmaster.feature.profile
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.habitmaster.ui.theme.HabitMasterTheme
 
+@Preview(showBackground = true)
 @Composable
-fun ProfileScreen(onFinish: () -> Unit) {
-    Text("프로필 화면입니다")
-    //TODO: ui 구현
+fun ProfilePreview() {
+    HabitMasterTheme {
+        ProfileScreen(onFinish = {})
+    }
 }
+
+
