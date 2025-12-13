@@ -15,22 +15,40 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.habitmaster.core.data.Habit
+import com.example.habitmaster.core.data.firebase.FirebaseProfileRepository
 import com.example.habitmaster.core.designsystem.PretendardFamily
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 @Composable
 fun HabitCreateScreen(onFinish: () -> Unit) {
+    val repository = remember { FirebaseProfileRepository() }
+    val scope = rememberCoroutineScope()
+    var currentProfileId by remember { mutableStateOf<String?>(null) }
 
-    //TODO: ui 구현
+    // LaunchedEffect는 컴포지션 시점에 한 번만 실행됨.
+    // 하지만 observeProfiles()가 값을 방출하기까지 시간이 걸릴 수 있음.
+    LaunchedEffect(Unit) {
+        // 첫 번째 값을 가져오거나 flow collection을 유지
+        repository.observeProfiles().collect { profiles ->
+            if (profiles.isNotEmpty()) {
+                currentProfileId = profiles.first().id
+            }
+        }
+    }
 
     var habitName by remember { mutableStateOf("") }
     var targetCount by remember { mutableStateOf("") }
     var periodValue by remember { mutableStateOf("1") }
     var periodUnit by remember { mutableStateOf("일마다") }
-    var startDate by remember { mutableStateOf<Long?>(null) }
+    var startDate by remember { mutableStateOf<Long?>(System.currentTimeMillis()) }
 
+    var isSaving by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -42,8 +60,47 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 20.dp)
             ) {
+
                 FilledRegisterButton(
-                    onClick = { /* TODO */ },
+                    onClick = {
+                        // 유효성 검사 및 저장
+                        if (habitName.isNotBlank() && !isSaving) {
+                            isSaving = true
+                            scope.launch {
+                                try {
+                                    // currentProfileId가 아직 로드되지 않았을 경우를 대비해 다시 한번 가져오기 시도
+                                    val profileIdToUse = currentProfileId ?: repository.observeProfiles().firstOrNull()?.firstOrNull()?.id
+
+                                    if (profileIdToUse != null) {
+                                        val newHabit = Habit(
+                                            id = UUID.randomUUID().toString(),
+                                            title = habitName,
+                                            achievementRate = 0f,
+                                            completeList = mutableListOf(),
+                                            targetCount = targetCount.toIntOrNull() ?: 0,
+                                            periodValue = periodValue.toIntOrNull() ?: 1,
+                                            periodUnit = periodUnit,
+                                            startDate = startDate ?: System.currentTimeMillis()
+                                        )
+                                        // 저장 작업 실행
+                                        repository.addHabitToProfile(profileIdToUse, newHabit)
+
+                                        // 저장 완료 후, UI가 아직 로딩 중이라면 바로 onFinish() 호출
+                                        // 굳이 추가적인 delay를 줄 필요 없음.
+                                        // Firestore 업데이트는 비동기이지만 await()를 사용했으므로 완료된 상태임.
+
+                                        onFinish()
+                                    } else {
+                                        // 프로필 ID를 찾지 못함
+                                        isSaving = false
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    isSaving = false
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -84,7 +141,6 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
                 selectedDate = startDate,
                 onDateSelected = { startDate = it }
             )
-
         }
     }
 }
@@ -192,7 +248,7 @@ fun TargetCount(
             shape = RoundedCornerShape(15.dp),
             placeholder = {
                 Text(
-                    text = "예: 30회",
+                    text = "예: 30",
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp
                 )
@@ -259,7 +315,7 @@ fun FrequencySelector(
                 OutlinedTextField(
                     value = periodUnit,
                     onValueChange = {},
-                    enabled = false, 
+                    enabled = false,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(55.dp)
@@ -321,7 +377,7 @@ fun StartDateSelector(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    
+
     // selectedDate prop을 사용하여 포맷팅
     val formattedDate = selectedDate?.let {
         SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(it))
@@ -338,7 +394,7 @@ fun StartDateSelector(
         )
 
         Spacer(modifier = Modifier.height(6.dp))
-        
+
         Box {
              OutlinedTextField(
                 value = formattedDate,
@@ -378,7 +434,7 @@ fun StartDateSelector(
                     disabledPlaceholderColor = Color.Gray
                 )
             )
-            
+
             // 클릭 영역 확보
             Box(
                 modifier = Modifier
@@ -386,7 +442,7 @@ fun StartDateSelector(
                     .clickable { showDialog = true }
             )
         }
-       
+
 
         if (showDialog) {
             DatePickerModalInput(

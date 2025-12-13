@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.habitmaster.core.data.habitDummyData
+import com.example.habitmaster.core.data.Habit
 import com.example.habitmaster.core.designsystem.PretendardFamily
 import java.util.Calendar
 import java.util.Locale
@@ -92,16 +92,11 @@ fun InformationArea(
 }
 
 @Composable
-fun HabitList() {
+fun HabitList(habits: List<Habit> = emptyList()) {
     // 이번 주 날짜 정보 계산
     val calendar = Calendar.getInstance()
     // 오늘 요일 (1:일요일, 2:월요일, ... 7:토요일)
     val todayDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-    
-    // 이번 주 월요일 날짜 구하기 (한국은 보통 월요일 시작으로 보지만, Calendar는 일요일이 1)
-    // 여기서는 편의상 일요일부터 토요일까지 7일치를 구하거나, 
-    // 혹은 오늘을 기준으로 전후 3일을 보여주는 등 여러 방식이 가능.
-    // 기존 코드가 7개 고정이므로, 이번 주 "일~토" 혹은 "월~일" 날짜를 구해서 표시.
     
     // 예: 이번 주 일요일로 이동
     calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
@@ -152,7 +147,7 @@ fun HabitList() {
             modifier = Modifier
                 .padding(start = 25.dp, end = 25.dp, bottom = 25.dp)
         ) {
-            items(habitDummyData) { habitData ->
+            items(habits) { habitData ->
                 Spacer(modifier = Modifier.height(10.dp))
                 HabitCard(
                     habitData.title,

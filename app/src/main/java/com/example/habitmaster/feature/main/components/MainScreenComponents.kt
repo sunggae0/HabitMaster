@@ -138,8 +138,9 @@ fun DateIndex(date:Int, day:String){
     }
 }
 
+// Boolean 리스트를 받는 기존 함수 유지 (호환성)
 @Composable
-fun HabitCard(habitName:String, achievementRate: Float, habitCompleteList: List<Boolean>) {
+fun HabitCard(habitName:String, achievementRate: Float, habitCompleteList: List<Boolean?>) {
     val percentage = achievementRate * 100
 
     Box(
@@ -176,15 +177,35 @@ fun HabitCard(habitName:String, achievementRate: Float, habitCompleteList: List<
                     )
                 }
                 Row(modifier = Modifier.align(Alignment.CenterEnd)) {
-                    habitCompleteList.forEach { status ->
+                    // 최대 7개까지만 표시 (화면 공간상)
+                    habitCompleteList.take(7).forEach { status ->
                         Spacer(modifier = Modifier.width(25.dp))
-                        Icon(
-                            painter = painterResource(
-                                id = if (status) R.drawable.ic_checkicon_true else R.drawable.ic_checkicon_false
-                            ),
-                            contentDescription = if (status) "O" else "X",
-                            //modifier = Modifier.size(8.dp) // 아이콘 크기
-                        )
+                        when (status) {
+                            true -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_checkicon_true),
+                                    contentDescription = "Success",
+                                    tint = Color.Unspecified
+                                )
+                            }
+                            false -> {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_checkicon_false),
+                                    contentDescription = "Fail",
+                                    tint = Color.Unspecified
+                                )
+                            }
+                            null -> {
+                                // 아직 도래하지 않은 날짜 등: 하이픈(-) 혹은 빈 공간
+                                // 여기서는 텍스트로 - 표시하거나 별도 아이콘 사용
+                                Text(
+                                    text = "-",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
                 }
             }
