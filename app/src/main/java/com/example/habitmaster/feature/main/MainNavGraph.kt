@@ -7,7 +7,10 @@ import androidx.navigation.compose.composable
 fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
     composable("main") {
         MainScreen(
-            onFinish = { navController.navigate("habit_list") }
+            onFinish = { navController.navigate("habit_list") },
+            onNavigateToSettings = { navController.navigate("settings") },
+            onNavigateToMypage = { navController.navigate("mypage") },
+            onNavigateToHabitCreate = { navController.navigate("habit_create") }
         )
     }
 }

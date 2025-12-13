@@ -1,33 +1,20 @@
 package com.example.habitmaster.feature.habitCreate
 
-import android.graphics.Paint
-import android.text.Layout
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.core.util.Predicate
 import com.example.habitmaster.core.designsystem.PretendardFamily
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,7 +82,7 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
 
             StartDateSelector(
                 selectedDate = startDate,
-                onDateSelected = {startDate = it}
+                onDateSelected = { startDate = it }
             )
 
         }
@@ -268,14 +255,15 @@ fun FrequencySelector(
             val items = listOf("일마다", "주마다", "개월마다")
 
             Box(modifier = Modifier.weight(2f)) {
+                // Read-only TextField with Dropdown
                 OutlinedTextField(
                     value = periodUnit,
                     onValueChange = {},
-                    enabled = false, // 직접 입력 못하게
+                    enabled = false, 
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(55.dp)
-                        .clickable { expanded = true }, // 클릭되게
+                        .clickable { expanded = true },
                     singleLine = true,
                     trailingIcon = {
                         Icon(
@@ -287,7 +275,21 @@ fun FrequencySelector(
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp
                     ),
-                    shape = RoundedCornerShape(15.dp)
+                    shape = RoundedCornerShape(15.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = Color.Black,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // For material3, containers might need tweaking, but default is usually fine
+                    )
+                )
+
+                // 투명한 Box를 위에 덮어서 클릭 이벤트 가로채기 (enabled=false인 경우 클릭 안먹힘 방지)
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { expanded = true }
                 )
 
                 DropdownMenu(
@@ -319,8 +321,8 @@ fun StartDateSelector(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf<Long?>(null) }
-
+    
+    // selectedDate prop을 사용하여 포맷팅
     val formattedDate = selectedDate?.let {
         SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(it))
     } ?: ""
@@ -336,44 +338,61 @@ fun StartDateSelector(
         )
 
         Spacer(modifier = Modifier.height(6.dp))
-
-        OutlinedTextField(
-            value = formattedDate,
-            onValueChange = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(55.dp)
-                .clickable { showDialog = true },
-            placeholder = {
-                Text(
-                    text = "연도.월.일",
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    color = Color.Gray
-                )
-            },
-            textStyle = LocalTextStyle.current.copy(
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp
-            ),
-            shape = RoundedCornerShape(15.dp),
-            trailingIcon = {
-                IconButton(onClick = { showDialog = true }){
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(22.dp)
+        
+        Box {
+             OutlinedTextField(
+                value = formattedDate,
+                onValueChange = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(55.dp),
+                placeholder = {
+                    Text(
+                        text = "연도.월.일",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        color = Color.Gray
                     )
-                }
-            },
-            singleLine = true,
-            readOnly = true
-        )
+                },
+                textStyle = LocalTextStyle.current.copy(
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp
+                ),
+                shape = RoundedCornerShape(15.dp),
+                trailingIcon = {
+                    IconButton(onClick = { showDialog = true }){
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                },
+                singleLine = true,
+                readOnly = true,
+                enabled = false, // 비활성화하여 키보드 안 올라오게 함
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = Color.Black,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledPlaceholderColor = Color.Gray
+                )
+            )
+            
+            // 클릭 영역 확보
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { showDialog = true }
+            )
+        }
+       
 
         if (showDialog) {
             DatePickerModalInput(
-                onDateSelected = {selectedDate = it},
+                onDateSelected = {
+                    onDateSelected(it)
+                },
                 onDismiss = { showDialog = false}
             )
         }
@@ -386,7 +405,7 @@ fun DatePickerModalInput(
     onDateSelected: (Long?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val datePickerState = rememberDatePickerState(initialDisplayMode = DisplayMode.Input)
+    val datePickerState = rememberDatePickerState(initialDisplayMode = DisplayMode.Picker) // Input 보다는 Picker가 모바일에서 더 직관적일 수 있음
 
     DatePickerDialog(
         onDismissRequest = onDismiss,
