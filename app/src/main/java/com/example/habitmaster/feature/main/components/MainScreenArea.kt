@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habitmaster.core.data.habitDummyData
 import com.example.habitmaster.core.designsystem.PretendardFamily
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun InformationArea(
@@ -31,6 +34,15 @@ fun InformationArea(
     onSettingsClick: () -> Unit = {},
     onMypageClick: () -> Unit = {}
 ) {
+    // 인사말 결정 로직
+    val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greetingMessage = when (currentHour) {
+        in 5..11 -> "좋은 아침입니다!"
+        in 12..17 -> "점심은 맛있게 드셨나요?"
+        in 18..21 -> "오늘 하루도 수고하셨어요!"
+        else -> "편안한 밤 되세요!"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,7 +76,7 @@ fun InformationArea(
         
         Clock(12, 0)
         Text(
-            text = "$userName 님, 좋은 아침입니다!",
+            text = "$userName 님, $greetingMessage",
             fontFamily = PretendardFamily,
             fontWeight = FontWeight.Light,
             fontSize = 14.sp,
@@ -81,6 +93,30 @@ fun InformationArea(
 
 @Composable
 fun HabitList() {
+    // 이번 주 날짜 정보 계산
+    val calendar = Calendar.getInstance()
+    // 오늘 요일 (1:일요일, 2:월요일, ... 7:토요일)
+    val todayDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    
+    // 이번 주 월요일 날짜 구하기 (한국은 보통 월요일 시작으로 보지만, Calendar는 일요일이 1)
+    // 여기서는 편의상 일요일부터 토요일까지 7일치를 구하거나, 
+    // 혹은 오늘을 기준으로 전후 3일을 보여주는 등 여러 방식이 가능.
+    // 기존 코드가 7개 고정이므로, 이번 주 "일~토" 혹은 "월~일" 날짜를 구해서 표시.
+    
+    // 예: 이번 주 일요일로 이동
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+    
+    val weekDates = (0..6).map { i ->
+        val date = calendar.get(Calendar.DAY_OF_MONTH)
+        // 요일 문자열 (Locale.ENGLISH -> SUN, MON...)
+        val dayName = calendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.ENGLISH)?.uppercase() ?: ""
+        
+        // 다음 날로 이동
+        calendar.add(Calendar.DAY_OF_MONTH, 1)
+        
+        Pair(date, dayName)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,8 +140,8 @@ fun HabitList() {
                 )
             }
             Row(modifier = Modifier.align(Alignment.CenterEnd)) {
-                for (i in 1..7) {
-                    DateIndex(date = i, day = "MON")
+                weekDates.forEach { (date, dayName) ->
+                    DateIndex(date = date, day = dayName)
                     Spacer(modifier = Modifier.width(12.dp))
                 }
                 Spacer(modifier = Modifier.width(2.dp))
