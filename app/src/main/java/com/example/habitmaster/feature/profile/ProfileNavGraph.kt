@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 fun NavGraphBuilder.profileNavGraph(navController: NavHostController) {
     composable("profile") {
         ProfileScreen(
-            onFinish = { navController.navigate("habit_list") }
+            onFinish = { navController.navigate("main") }
         )
     }
 }
