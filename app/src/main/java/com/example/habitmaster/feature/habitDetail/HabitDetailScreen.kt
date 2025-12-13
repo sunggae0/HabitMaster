@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habitmaster.core.designsystem.PretendardFamily
+import com.example.habitmaster.feature.habitDetail.components.CompleteRateDisplay
 import com.example.habitmaster.feature.habitDetail.components.DetailHeader
 import com.example.habitmaster.feature.habitDetail.components.HabitTitleArea
 
@@ -40,38 +41,3 @@ fun HabitDetailArea(){
     }
 }
 
-@Composable
-fun CompleteRateDisplay(rate:Float, monthly:Float, annually:Float){
-    val monthlyRate = (monthly*100).toInt()
-    val annuallyRate = (annually*100).toInt()
-    Column(){
-        Box {
-            Text(
-                text = "성공률",
-                fontFamily = PretendardFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp
-            )
-            Text(
-                text = "${(rate * 100).toInt()}%",
-                fontFamily = PretendardFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 128.sp,
-            )
-        }
-        Row(){
-            Text(
-                text="Month ${if (monthlyRate>=0) "+" else "-"}$monthlyRate",
-                fontFamily = PretendardFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp
-            )
-            Text(
-                text="Year ${if (annuallyRate>=0) "+" else "-"}$annuallyRate",
-                fontFamily = PretendardFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp
-            )
-        }
-    }
-}

@@ -1,7 +1,12 @@
 package com.example.habitmaster.feature.habitDetail.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -13,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habitmaster.R
 import com.example.habitmaster.core.designsystem.PretendardFamily
@@ -93,5 +99,43 @@ fun HabitDetailInfo(title: String, info: String) {
             fontSize = 24.sp,
             color = Color.White
         )
+    }
+}
+
+@Composable
+fun CompleteRateDisplay(rate:Float, monthly:Float, annually:Float){
+    val monthlyRate = (monthly*100).toInt()
+    val annuallyRate = (annually*100).toInt()
+    Column(){
+        Box {
+            Text(
+                text = "누적 성공률",
+                fontFamily = PretendardFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp
+            )
+            Text(
+                text = "${(rate * 100).toInt()}%",
+                fontFamily = PretendardFamily,
+                fontWeight = FontWeight.Light,
+                fontSize = 95.sp,
+                modifier = Modifier.padding(top=10.dp)
+            )
+        }
+        Row(){
+            Text(
+                text="Month ${if (monthlyRate>=0) "+" else "-"}$monthlyRate",
+                fontFamily = PretendardFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 16.sp
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text="Year ${if (annuallyRate>=0) "+" else "-"}$annuallyRate",
+                fontFamily = PretendardFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 16.sp
+            )
+        }
     }
 }
