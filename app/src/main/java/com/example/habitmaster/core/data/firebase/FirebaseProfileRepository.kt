@@ -1,6 +1,7 @@
 package com.example.habitmaster.core.data.firebase
 
 import android.net.Uri
+import com.example.habitmaster.core.data.Habit
 import com.example.habitmaster.core.model.Profile
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -39,12 +40,19 @@ class FirebaseProfileRepository(
                 val name = d.getString("name") ?: return@mapNotNull null
                 val passwordHash = d.getString("passwordHash") ?: return@mapNotNull null
                 val photoUrl = d.getString("photoUrl")
+                val habits = (d.get("habits") as? List<Map<String, Any>>)?.mapNotNull { habitMap ->
+                    val title = habitMap["title"] as? String ?: return@mapNotNull null
+                    val achievementRate = (habitMap["achievementRate"] as? Number)?.toFloat() ?: 0f
+                    val completeList = (habitMap["completeList"] as? List<Boolean>)?.toMutableList() ?: mutableListOf()
+                    Habit(title, achievementRate, completeList)
+                } ?: emptyList()
                 val createdAtMillis = d.getLong("createdAtMillis") ?: 0L
                 Profile(
                     id = id,
                     name = name,
                     passwordHash = passwordHash,
                     photoUrl = photoUrl,
+                    habits = habits,
                     createdAtMillis = createdAtMillis
                 )
             }
@@ -65,6 +73,7 @@ class FirebaseProfileRepository(
             "name" to name,
             "passwordHash" to passwordHash,
             "photoUrl" to null,
+            "habits" to emptyList<Any>(),
             "createdAtMillis" to now
         )
 
@@ -75,6 +84,7 @@ class FirebaseProfileRepository(
             name = name,
             passwordHash = passwordHash,
             photoUrl = null,
+            habits = emptyList(),
             createdAtMillis = now
         )
     }
