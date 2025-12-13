@@ -85,14 +85,21 @@ fun InformationArea(
         Column() {
             Text("아침에 자주 달성하는 습관:")
             Spacer(modifier = Modifier.height(5.dp))
-            HabitCard("Habit View", 0.7f, listOf(true, false, true, false, true, false, true))
+            HabitCard(
+                habitName = "Habit View",
+                achievementRate = 0.7f,
+                habitCompleteList = listOf(true, false, true, false, true, false, true)
+            )
         }
 
     }
 }
 
 @Composable
-fun HabitList(habits: List<Habit> = emptyList()) {
+fun HabitList(
+    habits: List<Habit> = emptyList(),
+    onHabitClick: (String) -> Unit = {}
+) {
     // 이번 주 날짜 정보 계산
     val calendar = Calendar.getInstance()
     // 오늘 요일 (1:일요일, 2:월요일, ... 7:토요일)
@@ -143,16 +150,20 @@ fun HabitList(habits: List<Habit> = emptyList()) {
             }
         }
 
+        // 활성화된 습관만 필터링
+        val activeHabits = habits.filter { it.isActive }
+
         LazyColumn(
             modifier = Modifier
                 .padding(start = 25.dp, end = 25.dp, bottom = 25.dp)
         ) {
-            items(habits) { habitData ->
+            items(activeHabits) { habitData ->
                 Spacer(modifier = Modifier.height(10.dp))
                 HabitCard(
-                    habitData.title,
-                    habitData.achievementRate,
-                    habitData.completeList
+                    habitName = habitData.title,
+                    achievementRate = habitData.achievementRate,
+                    habitCompleteList = habitData.completeList,
+                    onClick = { onHabitClick(habitData.id) }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
             }

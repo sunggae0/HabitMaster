@@ -18,8 +18,10 @@ import androidx.compose.ui.unit.sp
 import com.example.habitmaster.core.data.Habit
 import com.example.habitmaster.core.data.firebase.FirebaseProfileRepository
 import com.example.habitmaster.core.designsystem.PretendardFamily
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,16 +31,16 @@ import java.util.UUID
 fun HabitCreateScreen(onFinish: () -> Unit) {
     val repository = remember { FirebaseProfileRepository() }
     val scope = rememberCoroutineScope()
+
+    // ✅ Snackbar
+    val snackBarHostState = remember { SnackbarHostState() }
+
     var currentProfileId by remember { mutableStateOf<String?>(null) }
 
-    // LaunchedEffect는 컴포지션 시점에 한 번만 실행됨.
-    // 하지만 observeProfiles()가 값을 방출하기까지 시간이 걸릴 수 있음.
+    // ✅ 프로필 목록 구독해서 첫 번째 프로필 id 확보 (없으면 null 유지)
     LaunchedEffect(Unit) {
-        // 첫 번째 값을 가져오거나 flow collection을 유지
-        repository.observeProfiles().collect { profiles ->
-            if (profiles.isNotEmpty()) {
-                currentProfileId = profiles.first().id
-            }
+        repository.observeProfiles().collectLatest { profiles ->
+            currentProfileId = profiles.firstOrNull()?.id
         }
     }
 
@@ -51,6 +53,7 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
     var isSaving by remember { mutableStateOf(false) }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackBarHostState) }, // ✅ 추가
         topBar = {
             TopBar(onBackClick = onFinish)
         },
@@ -60,44 +63,51 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 20.dp)
             ) {
-
                 FilledRegisterButton(
                     onClick = {
-                        // 유효성 검사 및 저장
-                        if (habitName.isNotBlank() && !isSaving) {
-                            isSaving = true
-                            scope.launch {
-                                try {
-                                    // currentProfileId가 아직 로드되지 않았을 경우를 대비해 다시 한번 가져오기 시도
-                                    val profileIdToUse = currentProfileId ?: repository.observeProfiles().firstOrNull()?.firstOrNull()?.id
+                        if (isSaving) return@FilledRegisterButton
+                        if (habitName.isBlank()) {
+                            scope.launch { snackBarHostState.showSnackbar("습관 이름을 입력해주세요.") }
+                            return@FilledRegisterButton
+                        }
 
-                                    if (profileIdToUse != null) {
-                                        val newHabit = Habit(
-                                            id = UUID.randomUUID().toString(),
-                                            title = habitName,
-                                            achievementRate = 0f,
-                                            completeList = mutableListOf(),
-                                            targetCount = targetCount.toIntOrNull() ?: 0,
-                                            periodValue = periodValue.toIntOrNull() ?: 1,
-                                            periodUnit = periodUnit,
-                                            startDate = startDate ?: System.currentTimeMillis()
-                                        )
-                                        // 저장 작업 실행
-                                        repository.addHabitToProfile(profileIdToUse, newHabit)
-
-                                        // 저장 완료 후, UI가 아직 로딩 중이라면 바로 onFinish() 호출
-                                        // 굳이 추가적인 delay를 줄 필요 없음.
-                                        // Firestore 업데이트는 비동기이지만 await()를 사용했으므로 완료된 상태임.
-
-                                        onFinish()
-                                    } else {
-                                        // 프로필 ID를 찾지 못함
-                                        isSaving = false
+                        isSaving = true
+                        scope.launch {
+                            try {
+                                // ✅ profileId 확보 (최대 2초 기다려보고 없으면 안내)
+                                val profileIdToUse: String? = currentProfileId ?: run {
+                                    val list = withTimeoutOrNull(2000) {
+                                        repository.observeProfiles().firstOrNull()
                                     }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    isSaving = false
+                                    list?.firstOrNull()?.id
                                 }
+
+                                if (profileIdToUse == null) {
+                                    snackBarHostState.showSnackbar("프로필이 없습니다. 먼저 프로필을 생성해주세요.")
+                                    isSaving = false
+                                    return@launch
+                                }
+
+                                val newHabit = Habit(
+                                    id = UUID.randomUUID().toString(),
+                                    title = habitName,
+                                    achievementRate = 0f,
+                                    completeList = mutableListOf(),
+                                    targetCount = targetCount.toIntOrNull() ?: 0,
+                                    periodValue = periodValue.toIntOrNull() ?: 1,
+                                    periodUnit = periodUnit,
+                                    startDate = startDate ?: System.currentTimeMillis()
+                                )
+
+                                // ✅ 저장
+                                repository.addHabitToProfile(profileIdToUse, newHabit)
+
+                                // ✅ 성공 → 화면 종료(메인으로 돌아가기)
+                                onFinish()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                snackBarHostState.showSnackbar("저장 실패: ${e.message ?: "알 수 없는 오류"}")
+                                isSaving = false
                             }
                         }
                     },
@@ -149,18 +159,18 @@ fun HabitCreateScreen(onFinish: () -> Unit) {
 fun TopBar(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
-){
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp)
-    ){
+    ) {
         IconButton(
             onClick = onBackClick,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 16.dp)
-        ){
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
@@ -175,7 +185,7 @@ fun TopBar(
 fun PageTitle(
     text: String,
     modifier: Modifier = Modifier
-){
+) {
     Text(
         text = text,
         fontFamily = PretendardFamily,
@@ -186,14 +196,14 @@ fun PageTitle(
             .padding(top = 32.dp, bottom = 20.dp)
             .wrapContentWidth(Alignment.CenterHorizontally)
     )
-
 }
+
 @Composable
 fun HabitNameInput(
     habitName: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
-){
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "습관 이름",
@@ -230,7 +240,7 @@ fun TargetCount(
     target: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
-){
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "목표 횟수",
@@ -248,7 +258,7 @@ fun TargetCount(
             shape = RoundedCornerShape(15.dp),
             placeholder = {
                 Text(
-                    text = "예: 30",
+                    text = "예: 30회",
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp
                 )
@@ -262,19 +272,16 @@ fun TargetCount(
     }
 }
 
-
-
-
 @Composable
 fun FrequencySelector(
     periodValue: String,
     onPeriodValueChange: (String) -> Unit,
     periodUnit: String,
     onPeriodUnitChange: (String) -> Unit
-){
-    Column(modifier =Modifier.fillMaxWidth()) {
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text="주기 선택",
+            text = "주기 선택",
             fontFamily = PretendardFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 16.sp
@@ -293,13 +300,7 @@ fun FrequencySelector(
                     .height(55.dp)
                     .weight(1f),
                 singleLine = true,
-                placeholder = {
-                    Text(
-                        "1",
-                        fontFamily = PretendardFamily,
-                        fontSize = 14.sp
-                    )
-                },
+                placeholder = { Text("1", fontFamily = PretendardFamily, fontSize = 14.sp) },
                 textStyle = LocalTextStyle.current.copy(
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp
@@ -311,7 +312,6 @@ fun FrequencySelector(
             val items = listOf("일마다", "주마다", "개월마다")
 
             Box(modifier = Modifier.weight(2f)) {
-                // Read-only TextField with Dropdown
                 OutlinedTextField(
                     value = periodUnit,
                     onValueChange = {},
@@ -337,11 +337,9 @@ fun FrequencySelector(
                         disabledBorderColor = MaterialTheme.colorScheme.outline,
                         disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // For material3, containers might need tweaking, but default is usually fine
                     )
                 )
 
-                // 투명한 Box를 위에 덮어서 클릭 이벤트 가로채기 (enabled=false인 경우 클릭 안먹힘 방지)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -352,11 +350,9 @@ fun FrequencySelector(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    items.forEach{ item ->
+                    items.forEach { item ->
                         DropdownMenuItem(
-                            text = {
-                                Text(item, fontFamily = PretendardFamily)
-                            },
+                            text = { Text(item, fontFamily = PretendardFamily) },
                             onClick = {
                                 onPeriodUnitChange(item)
                                 expanded = false
@@ -378,14 +374,11 @@ fun StartDateSelector(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
-    // selectedDate prop을 사용하여 포맷팅
     val formattedDate = selectedDate?.let {
         SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(it))
     } ?: ""
 
     Column(modifier = modifier.fillMaxWidth()) {
-
-        // 라벨
         Text(
             text = "시작일 선택",
             fontFamily = PretendardFamily,
@@ -396,7 +389,7 @@ fun StartDateSelector(
         Spacer(modifier = Modifier.height(6.dp))
 
         Box {
-             OutlinedTextField(
+            OutlinedTextField(
                 value = formattedDate,
                 onValueChange = {},
                 modifier = Modifier
@@ -416,7 +409,7 @@ fun StartDateSelector(
                 ),
                 shape = RoundedCornerShape(15.dp),
                 trailingIcon = {
-                    IconButton(onClick = { showDialog = true }){
+                    IconButton(onClick = { showDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.DateRange,
                             contentDescription = null,
@@ -427,7 +420,7 @@ fun StartDateSelector(
                 },
                 singleLine = true,
                 readOnly = true,
-                enabled = false, // 비활성화하여 키보드 안 올라오게 함
+                enabled = false,
                 colors = OutlinedTextFieldDefaults.colors(
                     disabledTextColor = Color.Black,
                     disabledBorderColor = MaterialTheme.colorScheme.outline,
@@ -435,7 +428,6 @@ fun StartDateSelector(
                 )
             )
 
-            // 클릭 영역 확보
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -443,13 +435,10 @@ fun StartDateSelector(
             )
         }
 
-
         if (showDialog) {
             DatePickerModalInput(
-                onDateSelected = {
-                    onDateSelected(it)
-                },
-                onDismiss = { showDialog = false}
+                onDateSelected = { onDateSelected(it) },
+                onDismiss = { showDialog = false }
             )
         }
     }
@@ -461,7 +450,7 @@ fun DatePickerModalInput(
     onDateSelected: (Long?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val datePickerState = rememberDatePickerState(initialDisplayMode = DisplayMode.Picker) // Input 보다는 Picker가 모바일에서 더 직관적일 수 있음
+    val datePickerState = rememberDatePickerState(initialDisplayMode = DisplayMode.Picker)
 
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -469,9 +458,7 @@ fun DatePickerModalInput(
             TextButton(onClick = {
                 onDateSelected(datePickerState.selectedDateMillis)
                 onDismiss()
-            }) {
-                Text("OK")
-            }
+            }) { Text("OK") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -481,8 +468,6 @@ fun DatePickerModalInput(
     }
 }
 
-
-
 @Composable
 fun FilledRegisterButton(
     onClick: () -> Unit,
@@ -490,7 +475,7 @@ fun FilledRegisterButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(55.dp),
         colors = ButtonDefaults.buttonColors(

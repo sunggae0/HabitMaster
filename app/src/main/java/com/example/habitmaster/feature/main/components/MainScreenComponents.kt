@@ -140,7 +140,12 @@ fun DateIndex(date:Int, day:String){
 
 // Boolean 리스트를 받는 기존 함수 유지 (호환성)
 @Composable
-fun HabitCard(habitName:String, achievementRate: Float, habitCompleteList: List<Boolean?>) {
+fun HabitCard(
+    habitName: String,
+    achievementRate: Float,
+    habitCompleteList: List<Boolean?>,
+    onClick: () -> Unit = {}
+) {
     val percentage = achievementRate * 100
 
     Box(
@@ -152,6 +157,7 @@ fun HabitCard(habitName:String, achievementRate: Float, habitCompleteList: List<
                 clip = true
             }
             .background(Color(0xFFE3E3E3))
+            .clickable { onClick() } // 클릭 이벤트 추가
     ) {
         Box(
             modifier = Modifier

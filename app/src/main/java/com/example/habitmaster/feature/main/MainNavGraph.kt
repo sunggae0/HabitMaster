@@ -10,7 +10,10 @@ fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
             onFinish = { navController.navigate("habit_list") },
             onNavigateToSettings = { navController.navigate("settings") },
             onNavigateToMypage = { navController.navigate("mypage") },
-            onNavigateToHabitCreate = { navController.navigate("habit_create") }
+            onNavigateToHabitCreate = { navController.navigate("habit_create") },
+            onNavigateToHabitEdit = { habitId ->
+                navController.navigate("habit_edit/$habitId")
+            }
         )
     }
 }

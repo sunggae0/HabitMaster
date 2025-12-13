@@ -1,6 +1,7 @@
 package com.example.habitmaster.core.data.firebase
 
 import android.net.Uri
+import com.example.habitmaster.core.data.Habit
 import com.example.habitmaster.core.model.Profile
 import kotlinx.coroutines.flow.Flow
 
@@ -9,4 +10,5 @@ interface ProfileRepository {
     suspend fun createProfile(name: String, passwordPlain: String): Profile
     suspend fun uploadProfilePhoto(profileId: String, photoUri: Uri): String // returns downloadUrl
     suspend fun updateProfilePhotoUrl(profileId: String, photoUrl: String)
+    suspend fun updateHabit(profileId: String, habit: Habit)
 }

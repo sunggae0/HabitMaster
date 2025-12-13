@@ -42,7 +42,6 @@ class FirebaseProfileRepository(
                 val passwordHash = d.getString("passwordHash") ?: return@mapNotNull null
                 val photoUrl = d.getString("photoUrl")
                 
-                // 습관 목록 파싱 업데이트 (Boolean? 지원)
                 val habits = (d.get("habits") as? List<Map<String, Any>>)?.mapNotNull { habitMap ->
                     val habitId = habitMap["id"] as? String ?: UUID.randomUUID().toString()
                     val title = habitMap["title"] as? String ?: return@mapNotNull null
@@ -53,6 +52,7 @@ class FirebaseProfileRepository(
                     val periodValue = (habitMap["periodValue"] as? Number)?.toInt() ?: 1
                     val periodUnit = habitMap["periodUnit"] as? String ?: "일마다"
                     val startDate = (habitMap["startDate"] as? Number)?.toLong() ?: 0L
+                    val isActive = (habitMap["isActive"] as? Boolean) ?: true // 기본값 true
 
                     Habit(
                         id = habitId,
@@ -62,7 +62,8 @@ class FirebaseProfileRepository(
                         targetCount = targetCount,
                         periodValue = periodValue,
                         periodUnit = periodUnit,
-                        startDate = startDate
+                        startDate = startDate,
+                        isActive = isActive
                     )
                 } ?: emptyList()
                 
@@ -126,8 +127,6 @@ class FirebaseProfileRepository(
     // 습관 추가 메서드
     suspend fun addHabitToProfile(profileId: String, habit: Habit) {
         val col = profilesColRef()
-        // Firestore의 arrayUnion을 사용하여 리스트에 추가
-        // 주의: Custom Object를 직접 넣으면 직렬화 문제가 생길 수 있으므로 Map으로 변환
         val habitMap = mapOf(
             "id" to habit.id,
             "title" to habit.title,
@@ -136,8 +135,38 @@ class FirebaseProfileRepository(
             "targetCount" to habit.targetCount,
             "periodValue" to habit.periodValue,
             "periodUnit" to habit.periodUnit,
-            "startDate" to habit.startDate
+            "startDate" to habit.startDate,
+            "isActive" to habit.isActive
         )
         col.document(profileId).update("habits", FieldValue.arrayUnion(habitMap)).await()
+    }
+
+    override suspend fun updateHabit(profileId: String, habit: Habit) {
+        val col = profilesColRef()
+        
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(col.document(profileId))
+            val existingHabits = snapshot.get("habits") as? List<Map<String, Any>> ?: emptyList()
+            
+            val updatedHabits = existingHabits.map { habitMap ->
+                if (habitMap["id"] == habit.id) {
+                    mapOf(
+                        "id" to habit.id,
+                        "title" to habit.title,
+                        "achievementRate" to habit.achievementRate,
+                        "completeList" to habit.completeList,
+                        "targetCount" to habit.targetCount,
+                        "periodValue" to habit.periodValue,
+                        "periodUnit" to habit.periodUnit,
+                        "startDate" to habit.startDate,
+                        "isActive" to habit.isActive
+                    )
+                } else {
+                    habitMap
+                }
+            }
+            
+            transaction.update(col.document(profileId), "habits", updatedHabits)
+        }.await()
     }
 }

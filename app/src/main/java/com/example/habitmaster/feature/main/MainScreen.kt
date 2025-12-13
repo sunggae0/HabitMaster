@@ -22,7 +22,8 @@ fun MainScreen(
     onFinish: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
     onNavigateToMypage: () -> Unit = {},
-    onNavigateToHabitCreate: () -> Unit = {}
+    onNavigateToHabitCreate: () -> Unit = {},
+    onNavigateToHabitEdit: (String) -> Unit = {}
 ) {
     val repository = remember { FirebaseProfileRepository() }
     var currentProfile by remember { mutableStateOf<Profile?>(null) }
@@ -61,7 +62,12 @@ fun MainScreen(
                     onMypageClick = onNavigateToMypage
                 )
                 // 습관 목록 전달
-                HabitList(habits = currentProfile!!.habits)
+                HabitList(
+                    habits = currentProfile!!.habits,
+                    onHabitClick = { habitId ->
+                        onNavigateToHabitEdit(habitId)
+                    }
+                )
             }
         }
     }

@@ -8,6 +8,10 @@ import com.example.habitmaster.ui.theme.HabitMasterTheme
 @Composable
 fun HabitEditPreview() {
     HabitMasterTheme {
-        HabitEditScreen(onFinish = {})
+        // habitId 파라미터 더미값 전달
+        HabitEditScreen(
+            habitId = "preview_habit_id", 
+            onFinish = {}
+        )
     }
 }
