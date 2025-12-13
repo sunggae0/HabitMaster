@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "350197084436",
+    "project_id": "habitmaster-6dd54",
+    "storage_bucket": "habitmaster-6dd54.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350197084436:android:d6d59943fee8ab5ea85201",
+        "android_client_info": {
+          "package_name": "com.example.habitmaster"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPX559OKkYSB3eNliVdTdfMRMUej-YyrI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
