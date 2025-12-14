@@ -1,20 +1,24 @@
 package com.example.habitmaster.feature.habitCreate
 
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 
 fun NavGraphBuilder.habitCreateNavGraph(navController: NavHostController) {
-    composable("habit_create") {
+    composable(
+        route = "habit_create/{profileId}",
+        arguments = listOf(navArgument("profileId") { type = NavType.StringType })
+    ) { backStackEntry ->
+        val profileId = backStackEntry.arguments?.getString("profileId") ?: return@composable
+        
         HabitCreateScreen(
+            profileId = profileId,
             onFinish = {
-                navController.navigate("main") {
-                    // 시작 destination까지 정리하고 main만 남기기
-                    popUpTo(navController.graph.findStartDestination().id) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
+                // 작업 완료 시 해당 프로필의 메인 화면으로 이동하며 백스택 정리
+                navController.navigate("main/$profileId") {
+                    popUpTo(0) { inclusive = true }
                 }
             }
         )

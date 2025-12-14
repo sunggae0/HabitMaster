@@ -11,6 +11,9 @@ import com.example.habitmaster.ui.theme.HabitMasterTheme
 @Composable
 fun MainPreview() {
     HabitMasterTheme {
-        MainScreen(onFinish = {})
+        MainScreen(
+            profileId = "preview_profile_id", // 더미 ID 추가
+            onFinish = {}
+        )
     }
 }

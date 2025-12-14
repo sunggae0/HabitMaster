@@ -19,6 +19,7 @@ import com.example.habitmaster.feature.main.components.InformationArea
 
 @Composable
 fun MainScreen(
+    profileId: String, // 프로필 ID 인자 추가
     onFinish: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
     onNavigateToMypage: () -> Unit = {},
@@ -29,10 +30,15 @@ fun MainScreen(
     var currentProfile by remember { mutableStateOf<Profile?>(null) }
     
     // Firestore 실시간 감지하여 프로필 정보 및 습관 목록 업데이트
-    LaunchedEffect(Unit) {
+    // profileId에 해당하는 프로필만 찾아서 currentProfile로 설정
+    LaunchedEffect(profileId) {
         repository.observeProfiles().collect { profiles ->
-            if (profiles.isNotEmpty()) {
-                currentProfile = profiles.first() // 첫 번째 프로필 사용 (혹은 선택 로직)
+            val foundProfile = profiles.find { it.id == profileId }
+            if (foundProfile != null) {
+                currentProfile = foundProfile
+            } else {
+                // 해당 ID의 프로필을 찾을 수 없는 경우 (삭제됨 등)
+                // TODO: 에러 처리 또는 화면 나가기
             }
         }
     }

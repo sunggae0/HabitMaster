@@ -35,16 +35,14 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onFinish: () -> Unit) {
+fun ProfileScreen(onFinish: (String) -> Unit) { // onFinish 인자 변경
     val repository = remember { FirebaseProfileRepository() }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Firebase에서 불러온 프로필 목록
     val profiles = remember { mutableStateListOf<Profile>() }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // 초기 데이터 로딩
     LaunchedEffect(Unit) {
         try {
             repository.observeProfiles()
@@ -62,7 +60,6 @@ fun ProfileScreen(onFinish: () -> Unit) {
         }
     }
     
-    // 에러 발생 시 스낵바 표시
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -70,7 +67,6 @@ fun ProfileScreen(onFinish: () -> Unit) {
         }
     }
 
-    // 프로필 생성 다이얼로그 노출 여부
     var showCreateDialog by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
@@ -81,7 +77,6 @@ fun ProfileScreen(onFinish: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = { Text("프로필 선택") },
                 navigationIcon = {
-                    // 뒤로가기 버튼은 필요에 따라 onFinish 혹은 popBackStack 호출
                 }
             )
         }
@@ -111,12 +106,9 @@ fun ProfileScreen(onFinish: () -> Unit) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // 프로필 목록 그리드 (2열)
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 아직 로딩 전이거나 데이터가 없어도 profiles 크기에 맞춰서 표시
-                // 최대 4개 슬롯을 만들기 위해 profiles 리스트에 가상의 null을 추가하여 chunked
                 val displayList = profiles.toList() + if (profiles.size < 4) listOf(null) else emptyList()
                 val chunkedProfiles = displayList.chunked(2)
 
@@ -128,17 +120,14 @@ fun ProfileScreen(onFinish: () -> Unit) {
                         rowItems.forEach { profileItem ->
                             Box(modifier = Modifier.weight(1f)) {
                                 if (profileItem != null) {
-                                    // 이미 생성된 프로필 카드
                                     ExistingProfileCard(
                                         profile = profileItem,
                                         onClick = {
-                                            // TODO: 비밀번호 확인 후 로그인 등의 절차가 필요할 수 있음
-                                            onFinish()
+                                            // 선택된 프로필 ID 전달
+                                            onFinish(profileItem.id)
                                         }
                                     )
                                 } else {
-                                    // 프로필 추가 버튼 (비어있는 슬롯)
-                                    // 이미 4개 꽉 찼으면 마지막 null이 안들어갔으므로 렌더링 안됨
                                     if (profiles.size < 4) {
                                         AddProfileCard(
                                             onClick = { showCreateDialog = true }
@@ -149,7 +138,6 @@ fun ProfileScreen(onFinish: () -> Unit) {
                                 }
                             }
                         }
-                        // 홀수개일 때 빈 공간 채우기
                         if (rowItems.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -159,21 +147,19 @@ fun ProfileScreen(onFinish: () -> Unit) {
         }
     }
 
-    // 프로필 생성 다이얼로그
     if (showCreateDialog) {
         CreateProfileDialog(
             onDismiss = { showCreateDialog = false },
             onConfirm = { name, password, photoUri ->
                 scope.launch {
                     try {
-                        // 1. 프로필 메타데이터 생성 (Firestore)
                         val newProfile = repository.createProfile(name, password)
-                        
-                        // 2. 사진이 있으면 업로드 (Storage) 후 URL 업데이트 (Firestore)
                         if (photoUri != null) {
                             val downloadUrl = repository.uploadProfilePhoto(newProfile.id, photoUri)
                             repository.updateProfilePhotoUrl(newProfile.id, downloadUrl)
                         }
+                        // 생성 후 바로 해당 프로필로 진입하려면 여기서 onFinish(newProfile.id) 호출 가능
+                        // 하지만 목록에서 선택하도록 유도하는 것이 일반적일 수 있음. 여기서는 다이얼로그만 닫음.
                     } catch (e: Exception) {
                         e.printStackTrace()
                         errorMessage = "프로필 생성 실패: ${e.localizedMessage}"
@@ -191,7 +177,6 @@ fun ExistingProfileCard(
     profile: Profile,
     onClick: () -> Unit
 ) {
-    // 임시 색상 로직 (프로필마다 다르게 보이게)
     val color = Color(0xFFB1A7F5)
 
     Card(
@@ -214,11 +199,7 @@ fun ExistingProfileCard(
                     .background(color),
                 contentAlignment = Alignment.Center
             ) {
-                // 실제 이미지가 있으면 로드해야 하지만, 여기서는 coil 라이브러리 등이 없으므로 
-                // photoUrl이 있으면 아이콘 색상을 다르게 하거나 텍스트로 표시하는 정도로 대체
-                // (실제 구현 시 Coil의 AsyncImage 사용 권장)
                 if (profile.photoUrl != null) {
-                   // 이미지가 있다는 표시 (파란색 아이콘)
                    Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
@@ -295,7 +276,6 @@ fun CreateProfileDialog(
     
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // 갤러리 런처
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -310,7 +290,6 @@ fun CreateProfileDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 프로필 사진 선택 영역
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -322,8 +301,6 @@ fun CreateProfileDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     if (photoUri != null) {
-                        // 선택된 이미지가 있으면 표시해야 함 (Coil 필요)
-                        // 여기서는 간단히 텍스트로 대체
                         Text("사진\n선택됨", fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     } else {
                         Icon(
@@ -334,14 +311,12 @@ fun CreateProfileDialog(
                     }
                 }
                 
-                // 사진 건너뛰기 안내 (옵션)
                 TextButton(onClick = { photoUri = null }) {
                     Text("사진 건너뛰기 (초기화)", fontSize = 12.sp, color = Color.Gray)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 이름 입력
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -352,7 +327,6 @@ fun CreateProfileDialog(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // 비밀번호 입력
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -374,7 +348,6 @@ fun CreateProfileDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    // 유효성 검사: 이름 비어있지 않음, 비밀번호 4자리 이상
                     if (name.isNotBlank() && password.length >= 4) {
                         onConfirm(name, password, photoUri)
                     }

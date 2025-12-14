@@ -52,7 +52,8 @@ class FirebaseProfileRepository(
                     val periodValue = (habitMap["periodValue"] as? Number)?.toInt() ?: 1
                     val periodUnit = habitMap["periodUnit"] as? String ?: "일마다"
                     val startDate = (habitMap["startDate"] as? Number)?.toLong() ?: 0L
-                    val isActive = (habitMap["isActive"] as? Boolean) ?: true // 기본값 true
+                    val isActive = (habitMap["isActive"] as? Boolean) ?: true
+                    val lastSuccessDate = (habitMap["lastSuccessDate"] as? Number)?.toLong()
 
                     Habit(
                         id = habitId,
@@ -63,7 +64,8 @@ class FirebaseProfileRepository(
                         periodValue = periodValue,
                         periodUnit = periodUnit,
                         startDate = startDate,
-                        isActive = isActive
+                        isActive = isActive,
+                        lastSuccessDate = lastSuccessDate
                     )
                 } ?: emptyList()
                 
@@ -136,7 +138,8 @@ class FirebaseProfileRepository(
             "periodValue" to habit.periodValue,
             "periodUnit" to habit.periodUnit,
             "startDate" to habit.startDate,
-            "isActive" to habit.isActive
+            "isActive" to habit.isActive,
+            "lastSuccessDate" to habit.lastSuccessDate
         )
         col.document(profileId).update("habits", FieldValue.arrayUnion(habitMap)).await()
     }
@@ -159,7 +162,8 @@ class FirebaseProfileRepository(
                         "periodValue" to habit.periodValue,
                         "periodUnit" to habit.periodUnit,
                         "startDate" to habit.startDate,
-                        "isActive" to habit.isActive
+                        "isActive" to habit.isActive,
+                        "lastSuccessDate" to habit.lastSuccessDate
                     )
                 } else {
                     habitMap

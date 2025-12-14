@@ -9,5 +9,6 @@ data class Habit(
     var periodValue: Int = 1,
     var periodUnit: String = "일마다",
     var startDate: Long = 0L,
-    var isActive: Boolean = true // 활성화 여부 필드 추가
+    var isActive: Boolean = true,
+    var lastSuccessDate: Long? = null // 마지막으로 성공 버튼을 누른 날짜 (Timestamp)
 )

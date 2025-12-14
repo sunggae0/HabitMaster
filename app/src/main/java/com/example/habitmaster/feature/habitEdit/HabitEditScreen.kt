@@ -23,13 +23,14 @@ import com.example.habitmaster.core.designsystem.PretendardFamily
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun HabitEditScreen(
     habitId: String,
-    onFinish: () -> Unit
+    onFinish: (String) -> Unit // 완료 시 profileId를 전달
 ) {
     val repository = remember { FirebaseProfileRepository() }
     val scope = rememberCoroutineScope()
@@ -48,38 +49,38 @@ fun HabitEditScreen(
     var isActive by remember { mutableStateOf(true) } 
 
     // 데이터 로딩
-    LaunchedEffect(habitId) { // habitId가 변경되면 다시 로드
+    LaunchedEffect(habitId) {
         try {
-            // first()를 사용하여 한 번만 데이터를 가져옵니다. 
-            // collect를 계속 켜두면 다른 곳에서 업데이트가 발생할 때마다 UI 상태가 덮어씌워질 수 있으므로,
-            // 수정 화면에서는 초기값만 세팅하고 저장은 명시적으로 하는 것이 좋습니다.
-            // 다만, 여기서는 firstOrNull()을 사용하여 안전하게 가져옵니다.
             val profiles = repository.observeProfiles().firstOrNull() ?: emptyList()
-            if (profiles.isNotEmpty()) {
-                val profile = profiles.first()
-                currentProfileId = profile.id
-                
+            // 모든 프로필을 뒤져서 해당 habitId를 가진 프로필과 습관을 찾음
+            for (profile in profiles) {
                 val foundHabit = profile.habits.find { it.id == habitId }
                 if (foundHabit != null) {
+                    currentProfileId = profile.id
                     currentHabit = foundHabit
+                    
                     habitName = foundHabit.title
                     targetCount = foundHabit.targetCount.toString()
                     periodValue = foundHabit.periodValue.toString()
                     periodUnit = foundHabit.periodUnit
                     startDate = foundHabit.startDate
                     isActive = foundHabit.isActive
+                    break // 찾았으면 종료
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            // 에러 처리 필요시 추가
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopBar(onBackClick = onFinish)
+            TopBar(onBackClick = {
+                // 뒤로가기 시에도 profileId가 있다면 전달, 없다면(로딩 실패 등) 그냥 빈 문자열이나 에러 처리
+                // 여기서는 로딩된 profileId가 있으면 메인으로 이동
+                currentProfileId?.let { onFinish(it) }
+            })
         },
         bottomBar = {
             Box(
@@ -105,7 +106,7 @@ fun HabitEditScreen(
                                 )
 
                                 repository.updateHabit(profileId, updatedHabit)
-                                onFinish()
+                                onFinish(profileId) // 저장 완료 후 해당 프로필 메인으로 이동
                             } catch (e: Exception) {
                                 e.printStackTrace()
                                 snackbarHostState.showSnackbar("저장 중 오류가 발생했습니다: ${e.message}")
@@ -137,24 +138,46 @@ fun HabitEditScreen(
                                 val profileId = currentProfileId ?: return@launch
                                 val habitToUpdate = currentHabit ?: return@launch
                                 
+                                val now = System.currentTimeMillis()
+                                val lastSuccess = habitToUpdate.lastSuccessDate
+                                
+                                val isSameDay = if (lastSuccess != null) {
+                                    val cal1 = Calendar.getInstance().apply { timeInMillis = lastSuccess }
+                                    val cal2 = Calendar.getInstance().apply { timeInMillis = now }
+                                    cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+                                } else {
+                                    false
+                                }
+
+                                if (isSameDay) {
+                                    snackbarHostState.showSnackbar("다음 날 자정 이후에 성공버튼을 다시 누를 수 있습니다.")
+                                    return@launch
+                                }
+
                                 val updatedList = habitToUpdate.completeList.toMutableList()
                                 if (updatedList.size < 7) { 
+                                    updatedList.add(true)
+                                } else {
+                                    updatedList.removeAt(0)
                                     updatedList.add(true)
                                 }
                                 
                                 val successCount = updatedList.count { it == true }
-                                val newRate = if (updatedList.isNotEmpty()) {
-                                    successCount.toFloat() / updatedList.size.toFloat()
+                                val target = habitToUpdate.targetCount
+                                
+                                val newRate = if (target > 0) {
+                                    (successCount.toFloat() / target.toFloat()).coerceIn(0f, 1f)
                                 } else 0f
 
                                 val updatedHabit = habitToUpdate.copy(
                                     completeList = updatedList,
-                                    achievementRate = newRate
+                                    achievementRate = newRate,
+                                    lastSuccessDate = now
                                 )
                                 
                                 currentHabit = updatedHabit 
                                 repository.updateHabit(profileId, updatedHabit)
-                                // 성공 처리 후 저장까지 완료되면 스낵바 표시 (선택)
                                 snackbarHostState.showSnackbar("오늘 습관 달성 완료!")
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -210,7 +233,7 @@ fun HabitEditScreen(
     }
 }
 
-// ... (나머지 Composable 함수들은 기존과 동일)
+// ... (하위 컴포저블은 변경 없음, 생략 가능하지만 파일 전체를 덮어쓰므로 포함)
 @Composable
 fun TopBar(
     onBackClick: () -> Unit,
@@ -374,7 +397,6 @@ fun FrequencySelector(
             val items = listOf("일마다", "주마다", "개월마다")
 
             Box(modifier = Modifier.weight(2f)) {
-                // Read-only TextField with Dropdown
                 OutlinedTextField(
                     value = periodUnit,
                     onValueChange = {},
@@ -404,7 +426,7 @@ fun FrequencySelector(
                     )
                 )
 
-                // 투명한 Box를 위에 덮어서 클릭 이벤트 가로채기 (enabled=false인 경우 클릭 안먹힘 방지)
+                // 투명한 Box를 위에 덮어서 클릭 이벤트 가로채기
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -457,7 +479,6 @@ fun StartDateEdit(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Read-only TextField with DatePicker dialog trigger
         Box {
              OutlinedTextField(
                 value = formattedDate,
@@ -490,7 +511,7 @@ fun StartDateEdit(
                 },
                 singleLine = true,
                 readOnly = true,
-                enabled = false, // 비활성화하여 키보드 안 올라오게 함
+                enabled = false, 
                 colors = OutlinedTextFieldDefaults.colors(
                     disabledTextColor = Color.Black,
                     disabledBorderColor = MaterialTheme.colorScheme.outline,
@@ -498,7 +519,6 @@ fun StartDateEdit(
                 )
             )
             
-            // 클릭 영역 확보
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -552,7 +572,7 @@ fun ActivationSwitch(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(55.dp), // OutlinedTextField와 동일한 높이
+            .height(55.dp), 
         shape = RoundedCornerShape(15.dp)
     ){
         Row(

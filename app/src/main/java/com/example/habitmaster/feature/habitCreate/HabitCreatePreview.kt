@@ -1,14 +1,16 @@
 package com.example.habitmaster.feature.habitCreate
 
-
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.habitmaster.ui.theme.HabitMasterTheme
 
 @Preview(showBackground = true)
 @Composable
-fun HabitCreateScreenPreview() {
+fun HabitCreatePreview() {
     HabitMasterTheme {
-        HabitCreateScreen(onFinish = {})
+        HabitCreateScreen(
+            profileId = "preview_profile_id", // 더미 값 전달
+            onFinish = {}
+        )
     }
 }
