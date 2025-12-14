@@ -33,6 +33,7 @@ fun HabitEditScreen(
 ) {
     val repository = remember { FirebaseProfileRepository() }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     // 현재 프로필 및 습관 데이터 로드
     var currentProfileId by remember { mutableStateOf<String?>(null) }
@@ -44,19 +45,23 @@ fun HabitEditScreen(
     var periodValue by remember { mutableStateOf("1") }
     var periodUnit by remember { mutableStateOf("일마다") }
     var startDate by remember { mutableStateOf<Long?>(null) }
-    var isActive by remember { mutableStateOf(true) } // 활성화 여부 (삭제 대신 비활성화라면)
+    var isActive by remember { mutableStateOf(true) } 
 
-    LaunchedEffect(Unit) {
-        repository.observeProfiles().collect { profiles ->
+    // 데이터 로딩
+    LaunchedEffect(habitId) { // habitId가 변경되면 다시 로드
+        try {
+            // first()를 사용하여 한 번만 데이터를 가져옵니다. 
+            // collect를 계속 켜두면 다른 곳에서 업데이트가 발생할 때마다 UI 상태가 덮어씌워질 수 있으므로,
+            // 수정 화면에서는 초기값만 세팅하고 저장은 명시적으로 하는 것이 좋습니다.
+            // 다만, 여기서는 firstOrNull()을 사용하여 안전하게 가져옵니다.
+            val profiles = repository.observeProfiles().firstOrNull() ?: emptyList()
             if (profiles.isNotEmpty()) {
                 val profile = profiles.first()
                 currentProfileId = profile.id
                 
-                // 습관 찾기
                 val foundHabit = profile.habits.find { it.id == habitId }
                 if (foundHabit != null) {
                     currentHabit = foundHabit
-                    // 초기값 세팅
                     habitName = foundHabit.title
                     targetCount = foundHabit.targetCount.toString()
                     periodValue = foundHabit.periodValue.toString()
@@ -65,10 +70,14 @@ fun HabitEditScreen(
                     isActive = foundHabit.isActive
                 }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // 에러 처리 필요시 추가
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopBar(onBackClick = onFinish)
         },
@@ -82,20 +91,25 @@ fun HabitEditScreen(
                 FilledEditButton(
                     onClick = { 
                         scope.launch {
-                            val profileId = currentProfileId ?: return@launch
-                            val habitToUpdate = currentHabit ?: return@launch
+                            try {
+                                val profileId = currentProfileId ?: return@launch
+                                val habitToUpdate = currentHabit ?: return@launch
 
-                            val updatedHabit = habitToUpdate.copy(
-                                title = habitName,
-                                targetCount = targetCount.toIntOrNull() ?: 0,
-                                periodValue = periodValue.toIntOrNull() ?: 1,
-                                periodUnit = periodUnit,
-                                startDate = startDate ?: 0L,
-                                isActive = isActive
-                            )
+                                val updatedHabit = habitToUpdate.copy(
+                                    title = habitName,
+                                    targetCount = targetCount.toIntOrNull() ?: 0,
+                                    periodValue = periodValue.toIntOrNull() ?: 1,
+                                    periodUnit = periodUnit,
+                                    startDate = startDate ?: 0L,
+                                    isActive = isActive
+                                )
 
-                            repository.updateHabit(profileId, updatedHabit)
-                            onFinish()
+                                repository.updateHabit(profileId, updatedHabit)
+                                onFinish()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                snackbarHostState.showSnackbar("저장 중 오류가 발생했습니다: ${e.message}")
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -116,34 +130,36 @@ fun HabitEditScreen(
             ) {
                 PageTitle(text = "습관 수정")
 
-                // 습관 성공 버튼 (오늘 날짜 기준 체크)
-                // 실제로는 날짜 계산 로직이 더 복잡할 수 있음 (오늘이 몇 번째 인덱스인지 등)
-                // 여기서는 간단히 "오늘 성공" 버튼을 추가하고, 누르면 achievementRate 등을 업데이트하는 예시
                 Button(
                     onClick = {
                         scope.launch {
-                            val profileId = currentProfileId ?: return@launch
-                            val habitToUpdate = currentHabit ?: return@launch
-                            
-                            // 오늘에 해당하는 completeList 인덱스를 찾거나 추가해야 함. (임시로 마지막에 추가)
-                            val updatedList = habitToUpdate.completeList.toMutableList()
-                            if (updatedList.size < 7) { // 7일 제한
-                                updatedList.add(true)
-                            }
-                            
-                            // 달성률 계산 (성공 횟수 / 전체 시도 가능 횟수)
-                            val successCount = updatedList.count { it == true }
-                            val newRate = if (updatedList.isNotEmpty()) {
-                                successCount.toFloat() / updatedList.size.toFloat()
-                            } else 0f
+                            try {
+                                val profileId = currentProfileId ?: return@launch
+                                val habitToUpdate = currentHabit ?: return@launch
+                                
+                                val updatedList = habitToUpdate.completeList.toMutableList()
+                                if (updatedList.size < 7) { 
+                                    updatedList.add(true)
+                                }
+                                
+                                val successCount = updatedList.count { it == true }
+                                val newRate = if (updatedList.isNotEmpty()) {
+                                    successCount.toFloat() / updatedList.size.toFloat()
+                                } else 0f
 
-                            val updatedHabit = habitToUpdate.copy(
-                                completeList = updatedList,
-                                achievementRate = newRate
-                            )
-                            
-                            currentHabit = updatedHabit // UI 즉시 반영을 위해
-                            repository.updateHabit(profileId, updatedHabit)
+                                val updatedHabit = habitToUpdate.copy(
+                                    completeList = updatedList,
+                                    achievementRate = newRate
+                                )
+                                
+                                currentHabit = updatedHabit 
+                                repository.updateHabit(profileId, updatedHabit)
+                                // 성공 처리 후 저장까지 완료되면 스낵바 표시 (선택)
+                                snackbarHostState.showSnackbar("오늘 습관 달성 완료!")
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                snackbarHostState.showSnackbar("오류 발생: ${e.message}")
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A86F7)),
@@ -194,8 +210,7 @@ fun HabitEditScreen(
     }
 }
 
-// ... (나머지 Composable 함수들은 기존과 동일하게 유지하거나 필요시 수정)
-// 하단에 기존 Composable들 복사
+// ... (나머지 Composable 함수들은 기존과 동일)
 @Composable
 fun TopBar(
     onBackClick: () -> Unit,
