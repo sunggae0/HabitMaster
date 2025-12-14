@@ -90,10 +90,8 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                     TextButton(
                         onClick = {
                             showLogoutDialog = false
-                            coroutineScope.launch {
-                                session.signOut()
-                                navController.navigate("onboarding") { popUpTo(navController.graph.id) { inclusive = true } }
-                            }
+                            session.signOut()
+                            navController.navigate("onboarding") { popUpTo(navController.graph.id) { inclusive = true } }
                         }
                     ) { Text("예") }
                 },
