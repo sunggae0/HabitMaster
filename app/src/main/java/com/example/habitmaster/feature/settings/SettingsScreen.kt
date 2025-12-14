@@ -61,11 +61,16 @@ import androidx.compose.ui.unit.sp
 fun SettingsScreen(
     onFinish: () -> Unit,
     onShowProfileEditDialog: () -> Unit,
-    onShowPasswordChangeDialog: () -> Unit
+    onShowPasswordChangeDialog: () -> Unit,
+    notificationEnabled: Boolean,
+    onNotificationEnabledChange: (Boolean) -> Unit,
+    isDarkMode: Boolean,
+    onDarkModeChange: (Boolean) -> Unit,
+    onLogoutClick: () -> Unit,
+    onDataResetClick: () -> Unit,
+    onDataSaveClick: () -> Unit,
+    onDataRestoreClick: () -> Unit // 데이터 복구 클릭 핸들러 추가
 ) {
-    var isDarkMode by remember { mutableStateOf(false) }
-    var notificationsEnabled by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -95,30 +100,31 @@ fun SettingsScreen(
                     text = "알림 설정",
                     trailingContent = {
                         Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it }
+                            checked = notificationEnabled,
+                            onCheckedChange = onNotificationEnabledChange
                         )
                     }
-                ) { notificationsEnabled = !notificationsEnabled }
+                ) { onNotificationEnabledChange(!notificationEnabled) }
                 SettingsItem(
                     icon = Icons.Outlined.BrightnessMedium,
                     text = "라이트/다크 모드",
                     trailingContent = {
                         Switch(
                             checked = isDarkMode,
-                            onCheckedChange = { isDarkMode = it }
+                            onCheckedChange = onDarkModeChange
                         )
                     }
-                ) { isDarkMode = !isDarkMode }
+                ) { onDarkModeChange(!isDarkMode) }
             }
             SettingsSection(title = "데이터 지원") {
-                SettingsItem(icon = Icons.Outlined.CloudUpload, text = "데이터 저장") {}
-                SettingsItem(icon = Icons.Outlined.Restore, text = "데이터 복구") {}
+                SettingsItem(icon = Icons.Outlined.CloudUpload, text = "데이터 저장", onClick = onDataSaveClick)
+                SettingsItem(icon = Icons.Outlined.Restore, text = "데이터 복구", onClick = onDataRestoreClick)
                 SettingsItem(
                     icon = Icons.Outlined.Delete,
                     text = "데이터 초기화",
-                    textColor = MaterialTheme.colorScheme.error
-                ) {}
+                    textColor = MaterialTheme.colorScheme.error,
+                    onClick = onDataResetClick
+                )
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -128,8 +134,9 @@ fun SettingsScreen(
                     SettingsItem(
                         icon = Icons.AutoMirrored.Outlined.Logout,
                         text = "로그아웃",
-                        textColor = MaterialTheme.colorScheme.error
-                    ) {}
+                        textColor = MaterialTheme.colorScheme.error,
+                        onClick = onLogoutClick
+                    )
                 }
             }
         }
