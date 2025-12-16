@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habitmaster.core.data.Habit
 import com.example.habitmaster.core.data.firebase.FirebaseProfileRepository
+import com.example.habitmaster.core.model.Profile
 import com.example.habitmaster.core.model.UserStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,94 +29,22 @@ fun MypageScreen(
     onFinish: () -> Unit
 ) {
     val repository = remember { FirebaseProfileRepository() }
-    var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var currentProfile by remember { mutableStateOf<Profile?>(null) }
+    var isLoading by remember {mutableStateOf(false)}
 
+    // Firestore 실시간 감지하여 프로필 정보 및 습관 목록 업데이트
+    // profileId에 해당하는 프로필만 찾아서 currentProfile로 설정
     LaunchedEffect(profileId) {
-        repository.observeHabits(profileId).collect { fetchedHabits ->
-            habits = fetchedHabits
-            isLoading = false
-        }
-    }
-
-    // 전체 달성률 계산
-    val overallAchievementRate by remember(habits) {
-        derivedStateOf {
-            if (habits.isEmpty()) 50 else habits.map { it.achievementRate }.average().toInt()
-        }
-    }
-
-    // 최고 연속 달성일 계산
-    val bestStreak by remember(habits) {
-        derivedStateOf {
-            habits.maxOfOrNull { habit ->
-                var maxStreak = 0
-                var currentStreak = 0
-                habit.completeList.forEach { completed ->
-                    if (completed == true) {
-                        currentStreak++
-                    } else {
-                        if (currentStreak > maxStreak) maxStreak = currentStreak
-                        currentStreak = 0
-                    }
-                }
-                if (currentStreak > maxStreak) maxStreak = currentStreak
-                maxStreak
-            } ?: 0
-        }
-    }
-
-    // 현재 연속 달성일 계산
-    val currentStreak by remember(habits) {
-        derivedStateOf {
-            habits.maxOfOrNull { habit ->
-                var streak = 0
-                for (i in habit.completeList.indices.reversed()) {
-                    if (habit.completeList[i] == true) streak++ else break
-                }
-                streak
-            } ?: 0
-        }
-    }
-
-    // 진행중인 습관 개수 계산
-    val ongoingHabitsCount by remember(habits) {
-        derivedStateOf { habits.count { it.isActive } }
-    }
-
-    // 총 달성 횟수 계산
-    val totalSuccessCount by remember(habits) {
-        derivedStateOf { habits.sumOf { it.completeList.count { s -> s == true } } }
-    }
-
-    // [추가] 달성률 등급별 습관 분포도 데이터 계산
-    val achievementDistribution by remember(habits) {
-        derivedStateOf {
-            val counts = MutableList(5) { 0 }
-            habits.forEach {
-                val ratePercent = (it.achievementRate * 100).toInt()
-                val bucketIndex = when {
-                    ratePercent in 0..20 -> 0
-                    ratePercent in 21..40 -> 1
-                    ratePercent in 41..60 -> 2
-                    ratePercent in 61..80 -> 3
-                    else -> 4
-                }
-                counts[bucketIndex]++
+        repository.observeProfiles().collect { profiles ->
+            val foundProfile = profiles.find { it.id == profileId }
+            if (foundProfile != null) {
+                currentProfile = foundProfile
+            } else {
+                // 해당 ID의 프로필을 찾을 수 없는 경우 (삭제됨 등)
+                // TODO: 에러 처리 또는 화면 나가기
             }
-            counts
         }
     }
-
-    val calculatedStats = UserStatus(
-        achievementRate = overallAchievementRate,
-        currentStreak = currentStreak,
-        totalAchieved = totalSuccessCount,
-        bestStreak = bestStreak,
-        activeChallenges = ongoingHabitsCount
-    )
-
-    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -124,11 +54,90 @@ fun MypageScreen(
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
+        if (currentProfile == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
+            val habits = currentProfile!!.habits
+            // 전체 달성률 계산
+            val overallAchievementRate by remember(habits) {
+                derivedStateOf {
+                    if (habits.isEmpty()) 0 else habits.map { it.achievementRate*100 }.average().toInt()
+                }
+            }
+
+            // 최고 연속 달성일 계산
+            val bestStreak by remember(habits) {
+                derivedStateOf {
+                    habits.maxOfOrNull { habit ->
+                        var maxStreak = 0
+                        var currentStreak = 0
+                        habit.completeList.forEach { completed ->
+                            if (completed == true) {
+                                currentStreak++
+                            } else {
+                                if (currentStreak > maxStreak) maxStreak = currentStreak
+                                currentStreak = 0
+                            }
+                        }
+                        if (currentStreak > maxStreak) maxStreak = currentStreak
+                        maxStreak
+                    } ?: 0
+                }
+            }
+
+            // 현재 연속 달성일 계산
+            val currentStreak by remember(habits) {
+                derivedStateOf {
+                    habits.maxOfOrNull { habit ->
+                        var streak = 0
+                        for (i in habit.completeList.indices.reversed()) {
+                            if (habit.completeList[i] == true) streak++ else break
+                        }
+                        streak
+                    } ?: 0
+                }
+            }
+
+            // 진행중인 습관 개수 계산
+            val ongoingHabitsCount by remember(habits) {
+                derivedStateOf { habits.count { it.isActive } }
+            }
+
+            // 총 달성 횟수 계산
+            val totalSuccessCount by remember(habits) {
+                derivedStateOf { habits.sumOf { it.completeList.count { s -> s == true } } }
+            }
+
+            // [추가] 달성률 등급별 습관 분포도 데이터 계산
+            val achievementDistribution by remember(habits) {
+                derivedStateOf {
+                    val counts = MutableList(5) { 0 }
+                    habits.forEach {
+                        val ratePercent = (it.achievementRate * 100).toInt()
+                        val bucketIndex = when {
+                            ratePercent in 0..20 -> 0
+                            ratePercent in 21..40 -> 1
+                            ratePercent in 41..60 -> 2
+                            ratePercent in 61..80 -> 3
+                            else -> 4
+                        }
+                        counts[bucketIndex]++
+                    }
+                    counts
+                }
+            }
+
+            val calculatedStats = UserStatus(
+                achievementRate = overallAchievementRate,
+                currentStreak = currentStreak,
+                totalAchieved = totalSuccessCount,
+                bestStreak = bestStreak,
+                activeChallenges = ongoingHabitsCount
+            )
+
+            val scrollState = rememberScrollState()
             Column(
                 modifier = Modifier
                     .padding(paddingValues)

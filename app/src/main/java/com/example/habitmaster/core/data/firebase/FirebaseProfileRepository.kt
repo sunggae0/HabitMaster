@@ -32,17 +32,18 @@ class FirebaseProfileRepository(
         profilesColRef().document(profileId).collection("habits")
 
     fun observeHabits(profileId: String): Flow<List<Habit>> = callbackFlow {
-        val ref = habitsColRef(profileId)
-        val registration = ref.addSnapshotListener { snap, err ->
+        val docRef = profilesColRef().document(profileId)
+
+        val registration = docRef.addSnapshotListener { snap, err ->
             if (err != null) {
                 close(err)
                 return@addSnapshotListener
             }
-            val habits = snap?.documents.orEmpty().mapNotNull { doc ->
-                doc.toObject(Habit::class.java)?.copy(id = doc.id)
-            }
+
+            val habits = snap?.toObject(Profile::class.java)?.habits.orEmpty()
             trySend(habits)
         }
+
         awaitClose { registration.remove() }
     }
 
