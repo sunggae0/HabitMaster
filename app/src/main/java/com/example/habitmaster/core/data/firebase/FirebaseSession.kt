@@ -16,4 +16,7 @@ class FirebaseSession(
         val result = auth.signInAnonymously().await()
         return requireNotNull(result.user).uid
     }
+    fun signOut() {
+        auth.signOut()
+    }
 }

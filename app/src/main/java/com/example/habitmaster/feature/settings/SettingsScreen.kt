@@ -20,12 +20,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.BrightnessMedium
-import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,17 +54,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.habitmaster.core.model.Profile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onFinish: () -> Unit,
     onShowProfileEditDialog: () -> Unit,
-    onShowPasswordChangeDialog: () -> Unit
+    onShowPasswordChangeDialog: () -> Unit,
+    notificationEnabled: Boolean,
+    onNotificationEnabledChange: (Boolean) -> Unit,
+    isDarkMode: Boolean,
+    onDarkModeChange: (Boolean) -> Unit,
+    onLogoutClick: () -> Unit,
+    onDataResetClick: () -> Unit
 ) {
-    var isDarkMode by remember { mutableStateOf(false) }
-    var notificationsEnabled by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -95,50 +98,54 @@ fun SettingsScreen(
                     text = "알림 설정",
                     trailingContent = {
                         Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it }
+                            checked = notificationEnabled,
+                            onCheckedChange = onNotificationEnabledChange
                         )
                     }
-                ) { notificationsEnabled = !notificationsEnabled }
+                ) { onNotificationEnabledChange(!notificationEnabled) }
                 SettingsItem(
                     icon = Icons.Outlined.BrightnessMedium,
                     text = "라이트/다크 모드",
                     trailingContent = {
                         Switch(
                             checked = isDarkMode,
-                            onCheckedChange = { isDarkMode = it }
+                            onCheckedChange = onDarkModeChange
                         )
                     }
-                ) { isDarkMode = !isDarkMode }
+                ) { onDarkModeChange(!isDarkMode) }
             }
-            SettingsSection(title = "데이터 지원") {
-                SettingsItem(icon = Icons.Outlined.CloudUpload, text = "데이터 저장") {}
-                SettingsItem(icon = Icons.Outlined.Restore, text = "데이터 복구") {}
+            // [수정] 새로운 '데이터 및 로그아웃' 섹션
+            SettingsSection(title = "데이터 및 로그아웃") {
                 SettingsItem(
                     icon = Icons.Outlined.Delete,
                     text = "데이터 초기화",
-                    textColor = MaterialTheme.colorScheme.error
-                ) {}
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SettingsItem(
-                        icon = Icons.AutoMirrored.Outlined.Logout,
-                        text = "로그아웃",
-                        textColor = MaterialTheme.colorScheme.error
-                    ) {}
-                }
+                    textColor = MaterialTheme.colorScheme.error,
+                    onClick = onDataResetClick
+                )
+                SettingsItem(
+                    icon = Icons.AutoMirrored.Outlined.Logout,
+                    text = "로그아웃",
+                    textColor = MaterialTheme.colorScheme.error,
+                    onClick = onLogoutClick
+                )
             }
         }
     }
 }
 
 @Composable
-fun ProfileEditDialog(onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("기존 이름") } // Replace with actual data
+fun ProfileEditDialog(
+    profile: Profile?,
+    onDismiss: () -> Unit,
+    onSave: (newName: String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+
+    LaunchedEffect(profile) {
+        if (profile != null) {
+            name = profile.name
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -170,29 +177,20 @@ fun ProfileEditDialog(onDismiss: () -> Unit) {
                 )
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    // TODO: Add save logic
-                    onDismiss()
-                }
-            ) {
-                Text("저장")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("취소")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onSave(name) }) { Text("저장") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
 }
 
 @Composable
-fun PasswordChangeDialog(onDismiss: () -> Unit) {
+fun PasswordChangeDialog(
+    onDismiss: () -> Unit,
+    onSave: (currentPassword: String, newPassword: String) -> Unit
+) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    val isError = remember(newPassword, confirmPassword) { newPassword.isNotEmpty() && newPassword != confirmPassword }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -220,25 +218,21 @@ fun PasswordChangeDialog(onDismiss: () -> Unit) {
                     onValueChange = { confirmPassword = it },
                     label = { Text("새 비밀번호 확인") },
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isError, // 에러 상태 표시
+                    supportingText = { if (isError) Text("새 비밀번호가 일치하지 않습니다.") }
                 )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    // TODO: Add password change logic
-                    onDismiss()
-                }
+                onClick = { onSave(currentPassword, newPassword) },
+                enabled = currentPassword.isNotEmpty() && newPassword.isNotEmpty() && !isError
             ) {
                 Text("저장")
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("취소")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
 }
 
@@ -262,9 +256,7 @@ fun SettingsSection(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large
         ) {
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                content()
-            }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) { content() }
         }
     }
 }
