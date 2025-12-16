@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "350197084436",
-    "project_id": "habitmaster-6dd54",
-    "storage_bucket": "habitmaster-6dd54.firebasestorage.app"
+    "project_number": "770366493470",
+    "project_id": "habitmaster-c5747",
+    "storage_bucket": "habitmaster-c5747.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:350197084436:android:d6d59943fee8ab5ea85201",
+        "mobilesdk_app_id": "1:770366493470:android:d76e67c5dd4aee84832f0f",
         "android_client_info": {
           "package_name": "com.example.habitmaster"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAPX559OKkYSB3eNliVdTdfMRMUej-YyrI"
+          "current_key": "AIzaSyA27KziR5yjPqf6j2uAHYIphEFwPBn6ikY"
         }
       ],
       "services": {
