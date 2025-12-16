@@ -25,6 +25,11 @@ class FirebaseProfileRepository(
             .document(session.requireUid())
             .collection("profiles")
 
+    // 프로필 이름 변경 함수 추가
+    suspend fun updateProfileName(profileId: String, newName: String) {
+        profilesColRef().document(profileId).update("name", newName).await()
+    }
+
     private suspend fun backupsColRef() =
         firestore.collection("backups")
             .document(session.requireUid())

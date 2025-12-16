@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.habitmaster.core.model.Profile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +71,7 @@ fun SettingsScreen(
     onLogoutClick: () -> Unit,
     onDataResetClick: () -> Unit,
     onDataSaveClick: () -> Unit,
-    onDataRestoreClick: () -> Unit // 데이터 복구 클릭 핸들러 추가
+    onDataRestoreClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -144,8 +146,18 @@ fun SettingsScreen(
 }
 
 @Composable
-fun ProfileEditDialog(onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("기존 이름") } // Replace with actual data
+fun ProfileEditDialog(
+    profile: Profile?,
+    onDismiss: () -> Unit,
+    onSave: (newName: String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+
+    LaunchedEffect(profile) {
+        if (profile != null) {
+            name = profile.name
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -177,29 +189,21 @@ fun ProfileEditDialog(onDismiss: () -> Unit) {
                 )
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    // TODO: Add save logic
-                    onDismiss()
-                }
-            ) {
-                Text("저장")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("취소")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onSave(name) }) { Text("저장") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
 }
 
+// [수정] onSave 파라미터 추가
 @Composable
-fun PasswordChangeDialog(onDismiss: () -> Unit) {
+fun PasswordChangeDialog(
+    onDismiss: () -> Unit,
+    onSave: (currentPassword: String, newPassword: String) -> Unit
+) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    val isError = remember(newPassword, confirmPassword) { newPassword.isNotEmpty() && newPassword != confirmPassword }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -227,28 +231,23 @@ fun PasswordChangeDialog(onDismiss: () -> Unit) {
                     onValueChange = { confirmPassword = it },
                     label = { Text("새 비밀번호 확인") },
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isError, // 에러 상태 표시
+                    supportingText = { if (isError) Text("새 비밀번호가 일치하지 않습니다.") }
                 )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    // TODO: Add password change logic
-                    onDismiss()
-                }
+                onClick = { onSave(currentPassword, newPassword) },
+                enabled = currentPassword.isNotEmpty() && newPassword.isNotEmpty() && !isError // 저장 버튼 활성화 조건
             ) {
                 Text("저장")
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("취소")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
 }
-
 
 @Composable
 fun SettingsSection(
@@ -269,9 +268,7 @@ fun SettingsSection(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large
         ) {
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                content()
-            }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) { content() }
         }
     }
 }

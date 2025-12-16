@@ -11,15 +11,17 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.example.habitmaster.core.data.firebase.FirebaseProfileRepository
-import com.example.habitmaster.core.data.firebase.FirebaseSession
 import com.example.habitmaster.core.model.BackupInfo
+import com.example.habitmaster.core.model.Profile
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
-    composable("settings") {
+    composable("settings/{profileId}") { backStackEntry ->
+        val profileId = backStackEntry.arguments?.getString("profileId") ?: return@composable
+
         var showProfileDialog by remember { mutableStateOf(false) }
         var showPasswordDialog by remember { mutableStateOf(false) }
         var notificationEnabled by remember { mutableStateOf(false) }
@@ -35,20 +37,23 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
         var backupList by remember { mutableStateOf<List<BackupInfo>>(emptyList()) }
         var selectedBackup by remember { mutableStateOf<BackupInfo?>(null) }
         var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+        var showPasswordResultDialog by remember { mutableStateOf<Boolean?>(null) } // 비밀번호 변경 결과 다이얼로그 상태
 
         val coroutineScope = rememberCoroutineScope()
-        val session = remember { FirebaseSession() }
         val repository = remember { FirebaseProfileRepository() }
+
+        val currentProfile by produceState<Profile?>(initialValue = null, profileId) {
+            repository.observeProfiles().collect { profiles ->
+                value = profiles.find { it.id == profileId }
+            }
+        }
 
         SettingsScreen(
             onFinish = { navController.popBackStack() },
             onShowProfileEditDialog = { showProfileDialog = true },
             onShowPasswordChangeDialog = { showPasswordDialog = true },
             notificationEnabled = notificationEnabled,
-            onNotificationEnabledChange = {
-                notificationEnabled = it
-                showNotificationDialog = true
-            },
+            onNotificationEnabledChange = { notificationEnabled = it; showNotificationDialog = true },
             isDarkMode = isDarkMode,
             onDarkModeChange = { isDarkMode = it },
             onLogoutClick = { showLogoutDialog = true },
@@ -63,11 +68,41 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
         )
 
         if (showProfileDialog) {
-            ProfileEditDialog(onDismiss = { showProfileDialog = false })
+            ProfileEditDialog(
+                profile = currentProfile,
+                onDismiss = { showProfileDialog = false },
+                onSave = { newName ->
+                    coroutineScope.launch {
+                        repository.updateProfileName(profileId, newName)
+                        showProfileDialog = false
+                    }
+                }
+            )
         }
 
         if (showPasswordDialog) {
-            PasswordChangeDialog(onDismiss = { showPasswordDialog = false })
+            PasswordChangeDialog(
+                onDismiss = { showPasswordDialog = false },
+                onSave = { currentPassword, newPassword ->
+                    coroutineScope.launch {
+                        val success = repository.updatePassword(profileId, currentPassword, newPassword)
+                        showPasswordDialog = false
+                        showPasswordResultDialog = success
+                    }
+                }
+            )
+        }
+
+        // 비밀번호 변경 결과 다이얼로그
+        showPasswordResultDialog?.let { success ->
+            val title = if (success) "성공" else "오류"
+            val text = if (success) "비밀번호가 성공적으로 변경되었습니다." else "현재 비밀번호가 일치하지 않습니다."
+            AlertDialog(
+                onDismissRequest = { showPasswordResultDialog = null },
+                title = { Text(title) },
+                text = { Text(text) },
+                confirmButton = { TextButton(onClick = { showPasswordResultDialog = null }) { Text("확인") } }
+            )
         }
 
         if (showNotificationDialog) {
@@ -84,14 +119,13 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
-                title = { Text("로그아웃") },
-                text = { Text("정말 로그아웃 하시겠습니까?") },
+                title = { Text("프로필 선택으로") },
+                text = { Text("프로필 선택 화면으로 돌아가시겠습니까?") },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             showLogoutDialog = false
-                            session.signOut()
-                            navController.navigate("onboarding") { popUpTo(navController.graph.id) { inclusive = true } }
+                            navController.navigate("profile") { popUpTo(navController.graph.startDestinationId) { inclusive = true } }
                         }
                     ) { Text("예") }
                 },
@@ -106,11 +140,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                 text = { Text("정말 모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.") },
                 confirmButton = {
                     TextButton(
-                        onClick = {
-                            showDataResetDialog = false
-                            showDataResetSecondDialog = true
-                            confirmInputText = ""
-                        }
+                        onClick = { showDataResetDialog = false; showDataResetSecondDialog = true; confirmInputText = "" }
                     ) { Text("삭제") }
                 },
                 dismissButton = { TextButton(onClick = { showDataResetDialog = false }) { Text("취소") } }
@@ -124,10 +154,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                 text = { OutlinedTextField(value = confirmInputText, onValueChange = { confirmInputText = it }, label = { Text("'삭제'를 입력하세요") }, singleLine = true) },
                 confirmButton = {
                     TextButton(
-                        onClick = {
-                            showDataResetSecondDialog = false
-                            coroutineScope.launch { repository.deleteAllUserData() }
-                        },
+                        onClick = { showDataResetSecondDialog = false; coroutineScope.launch { repository.deleteAllUserData() } },
                         enabled = confirmInputText == "삭제"
                     ) { Text("최종 삭제") }
                 },
@@ -142,13 +169,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                 text = { Text("현재 데이터를 서버에 백업하시겠습니까?") },
                 confirmButton = {
                     TextButton(
-                        onClick = {
-                            showDataSaveDialog = false
-                            coroutineScope.launch {
-                                repository.backupUserData()
-                                showDataSaveSuccessDialog = true
-                            }
-                        }
+                        onClick = { showDataSaveDialog = false; coroutineScope.launch { repository.backupUserData(); showDataSaveSuccessDialog = true } }
                     ) { Text("예") }
                 },
                 dismissButton = { TextButton(onClick = { showDataSaveDialog = false }) { Text("아니요") } }
@@ -164,7 +185,6 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
             )
         }
 
-        // 데이터 복구 목록 창
         if (showDataRestoreDialog) {
             AlertDialog(
                 onDismissRequest = { showDataRestoreDialog = false },
@@ -173,11 +193,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                     LazyColumn {
                         items(backupList) { backup ->
                             val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(backup.createdAt))
-                            TextButton(onClick = { 
-                                selectedBackup = backup
-                                showDataRestoreDialog = false
-                                showRestoreConfirmDialog = true
-                             }) { Text("백업: $date") }
+                            TextButton(onClick = { selectedBackup = backup; showDataRestoreDialog = false; showRestoreConfirmDialog = true }) { Text("백업: $date") }
                         }
                     }
                 },
@@ -186,7 +202,6 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
             )
         }
 
-        // 데이터 복구 최종 확인 창
         if (showRestoreConfirmDialog) {
             AlertDialog(
                 onDismissRequest = { showRestoreConfirmDialog = false },
@@ -194,13 +209,7 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                 text = { Text("현재 모든 데이터를 덮어쓰고 선택한 시점으로 복구하시겠습니까?") },
                 confirmButton = {
                     TextButton(
-                        onClick = {
-                            showRestoreConfirmDialog = false
-                            coroutineScope.launch {
-                                selectedBackup?.let { repository.restoreFromBackup(it.id) }
-                                // TODO: 복구 완료 알림 또는 화면 새로고침
-                            }
-                        }
+                        onClick = { showRestoreConfirmDialog = false; coroutineScope.launch { selectedBackup?.let { repository.restoreFromBackup(it.id) } } }
                     ) { Text("복구") }
                 },
                 dismissButton = { TextButton(onClick = { showRestoreConfirmDialog = false }) { Text("취소") } }
