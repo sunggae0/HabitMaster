@@ -40,7 +40,7 @@ fun MypageScreen(
     // 전체 달성률 계산
     val overallAchievementRate by remember(habits) {
         derivedStateOf {
-            if (habits.isEmpty()) 0 else habits.map { it.achievementRate }.average().toInt()
+            if (habits.isEmpty()) 50 else habits.map { it.achievementRate }.average().toInt()
         }
     }
 

@@ -16,8 +16,8 @@ fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
         MainScreen(
             profileId = profileId,
             onFinish = { navController.navigate("habit_list") },
-            onNavigateToSettings = { navController.navigate("settings") },
-            onNavigateToMypage = { navController.navigate("mypage") },
+            onNavigateToSettings = { navController.navigate("settings/$profileId") },
+            onNavigateToMypage = { navController.navigate("mypage/$profileId") },
             onNavigateToHabitCreate = {
                 // 습관 생성 시에도 현재 프로필 ID를 넘겨줘야 한다면 URL 파라미터로 전달하거나,
                 // HabitCreateScreen 내부에서 현재 프로필을 추적할 수 있어야 함.
