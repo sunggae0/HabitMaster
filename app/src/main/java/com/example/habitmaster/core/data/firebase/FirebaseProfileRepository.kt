@@ -3,7 +3,7 @@ package com.example.habitmaster.core.data.firebase
 import android.net.Uri
 import com.example.habitmaster.core.model.BackupInfo
 import com.example.habitmaster.core.model.Profile
-import com.example.habitmaster.feature.profile.UserStatus // 화면의 데이터 클래스를 직접 참조 (임시 조치)
+import com.example.habitmaster.core.model.UserStatus
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.WriteBatch
