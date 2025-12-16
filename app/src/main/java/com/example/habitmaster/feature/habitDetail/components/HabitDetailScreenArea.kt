@@ -10,27 +10,43 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
+import java.time.format.DateTimeFormatter
 import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
-@Preview(showBackground = true)
+fun formatToMonthDay(timeMillis: Long): String {
+    val formatter = DateTimeFormatter
+        .ofPattern("y년 M월 d일", Locale.KOREAN)
+
+    return Instant.ofEpochMilli(timeMillis)
+        .atZone(ZoneId.systemDefault())
+        .format(formatter)
+}
 @Composable
-fun HabitTitleArea() {
+fun HabitTitleArea(title:String, startDate:Long?, periodValue:String, periodUnit:String, targetCount:String = "설정 안함") {
+    val formattedDate = startDate?.let {
+        remember(startDate) {
+            formatToMonthDay(startDate)
+        }
+    }?:"NaD"
     Box(modifier = Modifier.background(Color(0xFF6A86F7))) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start=25.dp,end=25.dp, bottom = 25.dp,top=10.dp)
         ) {
-            HabitDetailTitle("습관 상세보기 테스트", "2025년 11월 20일")
+            HabitDetailTitle(title, formattedDate)
             Spacer(modifier = Modifier.height(40.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start
             ) {
-                Box(modifier = Modifier.weight(1f)) { HabitDetailInfo("주기", "매일") }
-                Box(modifier = Modifier.weight(1f)) { HabitDetailInfo("수행 시간", "17:30") }
+                Box(modifier = Modifier.weight(1f)) { HabitDetailInfo("주기", periodValue + periodUnit) }
+                Box(modifier = Modifier.weight(1f)) { HabitDetailInfo("목표 횟수", targetCount) }
             }
         }
     }

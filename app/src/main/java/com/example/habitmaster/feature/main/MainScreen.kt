@@ -24,7 +24,7 @@ fun MainScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToMypage: () -> Unit = {},
     onNavigateToHabitCreate: () -> Unit = {},
-    onNavigateToHabitEdit: (String) -> Unit = {}
+    onNavigateToHabitDetail: (habitId:String) -> Unit = {}
 ) {
     val repository = remember { FirebaseProfileRepository() }
     var currentProfile by remember { mutableStateOf<Profile?>(null) }
@@ -71,7 +71,7 @@ fun MainScreen(
                 HabitList(
                     habits = currentProfile!!.habits,
                     onHabitClick = { habitId ->
-                        onNavigateToHabitEdit(habitId)
+                        onNavigateToHabitDetail(habitId)
                     }
                 )
             }

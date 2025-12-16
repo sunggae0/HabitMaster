@@ -25,11 +25,11 @@ fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
                 // 하지만 정확성을 위해 profileId를 넘겨주는 것이 좋음.
                 navController.navigate("habit_create/$profileId")
             },
-            onNavigateToHabitEdit = { habitId ->
+            onNavigateToHabitDetail = { habitId ->
                 // 수정 시에도 profileId가 필요할 수 있으나, HabitEditScreen은 habitId로 프로필을 찾을 수 없으므로(구조상),
                 // profileId도 같이 넘겨주는 것이 효율적임.
                 // 일단 기존 HabitEditScreen은 habitId만 받고 프로필 전체를 뒤져서 찾도록 되어 있음.
-                navController.navigate("habit_edit/$habitId/$profileId")
+                navController.navigate("habit_detail/$habitId")
             }
         )
     }

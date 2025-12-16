@@ -8,6 +8,7 @@ import com.example.habitmaster.ui.theme.HabitMasterTheme
 @Composable
 fun HabitDetailPreview() {
     HabitMasterTheme {
-        HabitDetailScreen(onFinish = {})
+        HabitDetailScreen("2b4a900f-38c9-4ca5-957a-3e849b213625",
+            onFinish = {})
     }
 }
