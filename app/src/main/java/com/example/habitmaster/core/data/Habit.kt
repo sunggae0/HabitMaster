@@ -4,7 +4,7 @@ data class Habit(
     var id: String = "",
     var title: String = "",
     var achievementRate: Float = 0f,
-    var completeList: MutableList<Boolean?> = mutableListOf(),
+    var completeList: MutableList<Boolean?> = mutableListOf(), 
     var targetCount: Int = 0,
     var periodValue: Int = 1,
     var periodUnit: String = "일마다",

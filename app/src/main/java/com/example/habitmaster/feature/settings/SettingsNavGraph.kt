@@ -58,13 +58,6 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
             onDarkModeChange = { isDarkMode = it },
             onLogoutClick = { showLogoutDialog = true },
             onDataResetClick = { showDataResetDialog = true },
-            onDataSaveClick = { showDataSaveDialog = true },
-            onDataRestoreClick = {
-                coroutineScope.launch {
-                    backupList = repository.getBackupList()
-                    showDataRestoreDialog = true
-                }
-            }
         )
 
         if (showProfileDialog) {

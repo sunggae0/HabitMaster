@@ -1,6 +1,7 @@
 package com.example.habitmaster.core.data.firebase
 
 import android.net.Uri
+import com.example.habitmaster.core.data.Habit // Habit 모델 import
 import com.example.habitmaster.core.model.BackupInfo
 import com.example.habitmaster.core.model.Profile
 import com.example.habitmaster.core.model.UserStatus
@@ -25,7 +26,40 @@ class FirebaseProfileRepository(
             .document(session.requireUid())
             .collection("profiles")
 
-    // 프로필 이름 변경 함수 추가
+    private suspend fun habitsColRef(profileId: String) = 
+        profilesColRef().document(profileId).collection("habits")
+
+    fun observeHabits(profileId: String): Flow<List<Habit>> = callbackFlow {
+        val ref = habitsColRef(profileId)
+        val registration = ref.addSnapshotListener { snap, err ->
+            if (err != null) {
+                close(err)
+                return@addSnapshotListener
+            }
+            val habits = snap?.documents.orEmpty().mapNotNull { doc ->
+                doc.toObject(Habit::class.java)?.copy(id = doc.id)
+            }
+            trySend(habits)
+        }
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun updatePassword(profileId: String, currentPasswordPlain: String, newPasswordPlain: String): Boolean {
+        val profileDocRef = profilesColRef().document(profileId)
+        val profileDoc = profileDocRef.get().await()
+
+        val storedPasswordHash = profileDoc.getString("passwordHash")
+        val currentPasswordHash = PasswordHasher.sha256(currentPasswordPlain)
+
+        if (storedPasswordHash != currentPasswordHash) {
+            return false
+        }
+
+        val newPasswordHash = PasswordHasher.sha256(newPasswordPlain)
+        profileDocRef.update("passwordHash", newPasswordHash).await()
+        return true
+    }
+
     suspend fun updateProfileName(profileId: String, newName: String) {
         profilesColRef().document(profileId).update("name", newName).await()
     }
@@ -35,7 +69,6 @@ class FirebaseProfileRepository(
             .document(session.requireUid())
             .collection("snapshots")
 
-    // 백업 목록을 가져오는 함수
     suspend fun getBackupList(): List<BackupInfo> {
         val snapshot = backupsColRef().orderBy("createdAt", Query.Direction.DESCENDING).get().await()
         return snapshot.documents.mapNotNull {
@@ -43,15 +76,12 @@ class FirebaseProfileRepository(
         }
     }
 
-    // 선택한 백업으로 데이터를 복원하는 함수
     suspend fun restoreFromBackup(backupId: String) {
         val backupDoc = backupsColRef().document(backupId).get().await()
         val backupData = backupDoc.get("data") as? Map<String, Any> ?: return
 
-        // 1. 현재 데이터 삭제
         deleteAllUserData()
 
-        // 2. 백업 데이터로 복원
         val batch = firestore.batch()
         backupData.forEach { (profileId, profileData) ->
             val profileDocRef = firestore.collection("accounts").document(session.requireUid()).collection("profiles").document(profileId)
@@ -70,7 +100,6 @@ class FirebaseProfileRepository(
         batch.commit().await()
     }
 
-    // 현재 사용자의 모든 데이터를 백업하는 함수
     suspend fun backupUserData() {
         val uid = session.requireUid()
         val profilesQuery = profilesColRef().get().await()
@@ -94,26 +123,31 @@ class FirebaseProfileRepository(
         }
     }
 
-    // 모든 사용자 데이터 (프로필, 통계 등)를 삭제하는 함수
+    // [수정] 습관 데이터까지 모두 삭제하도록 보강
     suspend fun deleteAllUserData() {
         val profilesQuery = profilesColRef().get().await()
         val batch = firestore.batch()
 
-        // 각 프로필 문서와 그 하위 컬렉션의 문서를 삭제 목록에 추가
         for (profileDoc in profilesQuery.documents) {
-            // stats 하위 컬렉션 삭제
+            // 1. stats 하위 컬렉션 삭제
             val statsQuery = profileDoc.reference.collection("stats").get().await()
             for (statDoc in statsQuery.documents) {
                 batch.delete(statDoc.reference)
             }
-            // 프로필 자체 삭제
+            
+            // 2. habits 하위 컬렉션 삭제 (추가된 부분)
+            val habitsQuery = profileDoc.reference.collection("habits").get().await()
+            for (habitDoc in habitsQuery.documents) {
+                batch.delete(habitDoc.reference)
+            }
+
+            // 3. 프로필 자체 삭제
             batch.delete(profileDoc.reference)
         }
 
         batch.commit().await()
     }
 
-    // 특정 프로필의 통계 정보를 실시간으로 관찰하는 함수
     fun observeUserStatus(profileId: String): Flow<UserStatus?> = callbackFlow {
         val statusDocRef = firestore.collection("accounts").document(session.requireUid()).collection("profiles").document(profileId).collection("stats").document("main")
         val registration = statusDocRef.addSnapshotListener { snap, err ->
@@ -127,7 +161,6 @@ class FirebaseProfileRepository(
         awaitClose { registration.remove() }
     }
 
-    // 통계 정보를 Firestore에 저장/업데이트하는 함수
     suspend fun saveUserStatus(profileId: String, status: UserStatus) {
         profilesColRef().document(profileId).collection("stats").document("main").set(status).await()
     }
@@ -180,7 +213,6 @@ class FirebaseProfileRepository(
 
         col.document(profileId).set(data).await()
 
-        // 새 프로필 생성 시 기본 통계 데이터도 함께 생성
         saveUserStatus(profileId, UserStatus())
 
         return Profile(

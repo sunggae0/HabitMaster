@@ -2,15 +2,15 @@ package com.example.habitmaster.feature.mypage
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.habitmaster.core.model.UserStatus // 공용 UserStatus 모델 import
 import com.example.habitmaster.ui.theme.HabitMasterTheme
 
 @Preview(showBackground = true)
 @Composable
 fun MypageScreenPreview() {
     HabitMasterTheme {
+        // [수정] stats 대신 profileId를 전달하도록 변경
         MypageScreen(
-            stats = UserStatus(),
+            profileId = "preview-profile-id",
             onFinish = {}
         )
     }

@@ -1,19 +1,13 @@
 package com.example.habitmaster.feature.settings
 
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.habitmaster.core.model.BackupInfo
 import com.example.habitmaster.core.model.Profile // Profile 모델 import
 import com.example.habitmaster.ui.theme.HabitMasterTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Preview(showBackground = true)
 @Composable
@@ -28,9 +22,6 @@ fun SettingsPreview() {
         var showDataResetDialog by remember { mutableStateOf(false) }
         var showDataResetSecondDialog by remember { mutableStateOf(false) }
         var confirmInputText by remember { mutableStateOf("") }
-        var showDataSaveDialog by remember { mutableStateOf(false) }
-        var showDataSaveSuccessDialog by remember { mutableStateOf(false) }
-        var showDataRestoreDialog by remember { mutableStateOf(false) }
 
         SettingsScreen(
             onFinish = {},
@@ -44,24 +35,21 @@ fun SettingsPreview() {
             isDarkMode = isDarkMode,
             onDarkModeChange = { isDarkMode = it },
             onLogoutClick = { showLogoutDialog = true },
-            onDataResetClick = { showDataResetDialog = true },
-            onDataSaveClick = { showDataSaveDialog = true },
-            onDataRestoreClick = { showDataRestoreDialog = true }
+            onDataResetClick = { showDataResetDialog = true }
         )
 
         if (showProfileDialog) {
-            // photoUrl 필드 추가
             ProfileEditDialog(
                 profile = Profile(id = "preview", name = "기존 이름", passwordHash = "", photoUrl = null, createdAtMillis = 0L),
                 onDismiss = { showProfileDialog = false },
-                onSave = { _ -> } 
+                onSave = { _ -> }
             )
         }
 
         if (showPasswordDialog) {
             PasswordChangeDialog(
                 onDismiss = { showPasswordDialog = false },
-                onSave = { _, _ -> } 
+                onSave = { _, _ -> }
             )
         }
 
@@ -103,47 +91,6 @@ fun SettingsPreview() {
                 text = { OutlinedTextField(value = confirmInputText, onValueChange = { confirmInputText = it }, label = { Text("'삭제'를 입력하세요") }, singleLine = true) },
                 confirmButton = { TextButton(onClick = { showDataResetSecondDialog = false }, enabled = confirmInputText == "삭제") { Text("최종 삭제") } },
                 dismissButton = { TextButton(onClick = { showDataResetSecondDialog = false }) { Text("취소") } }
-            )
-        }
-
-        if (showDataSaveDialog) {
-            AlertDialog(
-                onDismissRequest = { showDataSaveDialog = false },
-                title = { Text("데이터 저장") },
-                text = { Text("현재 데이터를 서버에 백업하시겠습니까?") },
-                confirmButton = { TextButton(onClick = { showDataSaveDialog = false; showDataSaveSuccessDialog = true }) { Text("예") } },
-                dismissButton = { TextButton(onClick = { showDataSaveDialog = false }) { Text("아니요") } }
-            )
-        }
-
-        if (showDataSaveSuccessDialog) {
-            AlertDialog(
-                onDismissRequest = { showDataSaveSuccessDialog = false },
-                title = { Text("완료") },
-                text = { Text("데이터가 성공적으로 저장되었습니다.") },
-                confirmButton = { TextButton(onClick = { showDataSaveSuccessDialog = false }) { Text("확인") } }
-            )
-        }
-
-        if (showDataRestoreDialog) {
-            val dummyBackups = listOf(
-                BackupInfo(id = "1", createdAt = System.currentTimeMillis() - 1000 * 60 * 60 * 24 * 2),
-                BackupInfo(id = "2", createdAt = System.currentTimeMillis() - 1000 * 60 * 60 * 24 * 5)
-            )
-
-            AlertDialog(
-                onDismissRequest = { showDataRestoreDialog = false },
-                title = { Text("복구할 시점 선택") },
-                text = {
-                    LazyColumn {
-                        items(dummyBackups) { backup ->
-                            val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(backup.createdAt))
-                            TextButton(onClick = { /* TODO: Show final confirmation */ }) { Text("백업: $date") }
-                        }
-                    }
-                },
-                confirmButton = { },
-                dismissButton = { TextButton(onClick = { showDataRestoreDialog = false }) { Text("취소") } }
             )
         }
     }

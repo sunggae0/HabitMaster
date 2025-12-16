@@ -20,12 +20,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.BrightnessMedium
-import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,9 +67,7 @@ fun SettingsScreen(
     isDarkMode: Boolean,
     onDarkModeChange: (Boolean) -> Unit,
     onLogoutClick: () -> Unit,
-    onDataResetClick: () -> Unit,
-    onDataSaveClick: () -> Unit,
-    onDataRestoreClick: () -> Unit
+    onDataResetClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -118,28 +114,20 @@ fun SettingsScreen(
                     }
                 ) { onDarkModeChange(!isDarkMode) }
             }
-            SettingsSection(title = "데이터 지원") {
-                SettingsItem(icon = Icons.Outlined.CloudUpload, text = "데이터 저장", onClick = onDataSaveClick)
-                SettingsItem(icon = Icons.Outlined.Restore, text = "데이터 복구", onClick = onDataRestoreClick)
+            // [수정] 새로운 '데이터 및 로그아웃' 섹션
+            SettingsSection(title = "데이터 및 로그아웃") {
                 SettingsItem(
                     icon = Icons.Outlined.Delete,
                     text = "데이터 초기화",
                     textColor = MaterialTheme.colorScheme.error,
                     onClick = onDataResetClick
                 )
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    SettingsItem(
-                        icon = Icons.AutoMirrored.Outlined.Logout,
-                        text = "로그아웃",
-                        textColor = MaterialTheme.colorScheme.error,
-                        onClick = onLogoutClick
-                    )
-                }
+                SettingsItem(
+                    icon = Icons.AutoMirrored.Outlined.Logout,
+                    text = "로그아웃",
+                    textColor = MaterialTheme.colorScheme.error,
+                    onClick = onLogoutClick
+                )
             }
         }
     }
@@ -194,7 +182,6 @@ fun ProfileEditDialog(
     )
 }
 
-// [수정] onSave 파라미터 추가
 @Composable
 fun PasswordChangeDialog(
     onDismiss: () -> Unit,
@@ -240,7 +227,7 @@ fun PasswordChangeDialog(
         confirmButton = {
             TextButton(
                 onClick = { onSave(currentPassword, newPassword) },
-                enabled = currentPassword.isNotEmpty() && newPassword.isNotEmpty() && !isError // 저장 버튼 활성화 조건
+                enabled = currentPassword.isNotEmpty() && newPassword.isNotEmpty() && !isError
             ) {
                 Text("저장")
             }
@@ -248,6 +235,7 @@ fun PasswordChangeDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } }
     )
 }
+
 
 @Composable
 fun SettingsSection(
