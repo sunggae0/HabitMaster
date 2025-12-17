@@ -9,6 +9,7 @@ import com.example.habitmaster.ui.theme.HabitMasterTheme
 fun HabitDetailPreview() {
     HabitMasterTheme {
         HabitDetailScreen("2b4a900f-38c9-4ca5-957a-3e849b213625",
-            onFinish = {})
+            onFinish = {},
+            onNavigateToHabitEdit = { habitId, profileId -> {}} )
     }
 }

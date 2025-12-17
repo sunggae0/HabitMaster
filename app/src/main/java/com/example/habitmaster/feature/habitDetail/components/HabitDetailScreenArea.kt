@@ -28,7 +28,7 @@ fun formatToMonthDay(timeMillis: Long): String {
         .format(formatter)
 }
 @Composable
-fun HabitTitleArea(title:String, startDate:Long?, periodValue:String, periodUnit:String, targetCount:String = "설정 안함") {
+fun HabitTitleArea(title:String, startDate:Long?, periodValue:String, periodUnit:String, targetCount:String = "설정 안함",onEditClick: () -> Unit) {
     val formattedDate = startDate?.let {
         remember(startDate) {
             formatToMonthDay(startDate)
@@ -40,7 +40,7 @@ fun HabitTitleArea(title:String, startDate:Long?, periodValue:String, periodUnit
                 .fillMaxWidth()
                 .padding(start=25.dp,end=25.dp, bottom = 25.dp,top=10.dp)
         ) {
-            HabitDetailTitle(title, formattedDate)
+            HabitDetailTitle(title, formattedDate,onEditClick)
             Spacer(modifier = Modifier.height(40.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start

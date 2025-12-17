@@ -3,12 +3,18 @@ package com.example.habitmaster.feature.habitDetail
 import android.R.attr.fontFamily
 import android.R.attr.fontWeight
 import android.util.Log
+import android.util.Log.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +37,11 @@ import com.example.habitmaster.feature.habitDetail.components.CompleteRateDispla
 import com.example.habitmaster.feature.habitDetail.components.DetailHeader
 import com.example.habitmaster.feature.habitDetail.components.HabitTitleArea
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 @Composable
-fun HabitDetailScreen(habitId:String, onFinish: () -> Unit) {
+fun HabitDetailScreen(habitId:String, onFinish: () -> Unit,onNavigateToHabitEdit: (habitId:String,profileId:String) -> Unit) {
     val repository = remember { FirebaseProfileRepository() }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -70,21 +79,81 @@ fun HabitDetailScreen(habitId:String, onFinish: () -> Unit) {
                     break // 찾았으면 종료
                 }
             }
-            Log.d("HabitDetailScreen", "HabitId: $habitId, ProfileId: $currentProfileId, periodValue: $periodValue, targetCount: $targetCount")
+            d("HabitDetailScreen", "HabitId: $habitId, ProfileId: $currentProfileId, periodValue: $periodValue, targetCount: $targetCount")
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             DetailHeader(onBackClick = { onFinish() })
         }) { paddingValues ->
         Surface(modifier=Modifier.padding(paddingValues)) {
             Column {
-                HabitTitleArea(habitName, startDate, periodValue, periodUnit, targetCount)
+                HabitTitleArea(habitName, startDate, periodValue, periodUnit, targetCount, onEditClick = {onNavigateToHabitEdit(habitId,currentProfileId!!)})
                 HabitDetailArea(achievementRate)
                 Button(
-                    onclick = ,
+                    onClick = {
+                        Log.d("HabitDetailScreen", "habitId: $habitId, profileId: $currentProfileId")
+                        scope.launch {
+                            try {
+                                val profileId = currentProfileId ?: return@launch
+                                val habitToUpdate = currentHabit ?: return@launch
+
+                                val now = System.currentTimeMillis()
+                                val lastSuccess = habitToUpdate.lastSuccessDate
+
+                                val isSameDay = if (lastSuccess != null) {
+                                    val cal1 =
+                                        Calendar.getInstance().apply { timeInMillis = lastSuccess }
+                                    val cal2 = Calendar.getInstance().apply { timeInMillis = now }
+                                    cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                                            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+                                } else {
+                                    false
+                                }
+
+                                if (isSameDay) {
+                                    Log.d("HabitDetailScreen", "다음 날 자정 이후에 성공버튼을 다시 누를 수 있습니다.")
+                                    snackbarHostState.showSnackbar("다음 날 자정 이후에 성공버튼을 다시 누를 수 있습니다.")
+                                    return@launch
+                                }
+
+                                val updatedList = habitToUpdate.completeList.toMutableList()
+                                if (updatedList.size < 7) {
+                                    updatedList.add(true)
+                                } else {
+                                    updatedList.removeAt(0)
+                                    updatedList.add(true)
+                                }
+
+                                val successCount = updatedList.count { it == true }
+                                val target = habitToUpdate.targetCount
+
+                                val newRate = if (target > 0) {
+                                    (successCount.toFloat() / target.toFloat()).coerceIn(0f, 1f)
+                                } else 0f
+
+                                val updatedHabit = habitToUpdate.copy(
+                                    completeList = updatedList,
+                                    achievementRate = newRate,
+                                    lastSuccessDate = now
+                                )
+
+                                currentHabit = updatedHabit
+                                repository.updateHabit(profileId, updatedHabit)
+                                Log.d("HabitDetailScreen", "오늘 습관 달성 완료!")
+                                snackbarHostState.showSnackbar("오늘 습관 달성 완료!")
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                snackbarHostState.showSnackbar("오류 발생: ${e.message}")
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A86F7)),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ){
                     Text("달성 완료")
                 }
@@ -100,3 +169,6 @@ fun HabitDetailArea(achievementRate: Float){
     }
 }
 
+fun habitComplite(profileId: String, habitId: String){
+
+}

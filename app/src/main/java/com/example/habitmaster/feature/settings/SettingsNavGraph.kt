@@ -62,8 +62,13 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                 onDismiss = { showProfileDialog = false },
                 onSave = { newName ->
                     coroutineScope.launch {
-                        repository.updateProfileName(profileId, newName)
-                        showProfileDialog = false
+                        try {
+                            // 1. 이름 변경 시도
+                            repository.updateProfileName(profileId, newName)
+                        } finally {
+                            // 2. 성공하든, 실패하든, 무조건 실행되는 뒷정리 코드
+                            showProfileDialog = false
+                        }
                     }
                 }
             )

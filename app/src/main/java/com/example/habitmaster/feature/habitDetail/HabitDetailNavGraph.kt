@@ -11,7 +11,9 @@ fun NavGraphBuilder.habitDetailNavGraph(navController: NavHostController) {
         arguments = listOf(navArgument("habitId") { type = NavType.StringType })) {backStackEntry ->
         val habitId = backStackEntry.arguments?.getString("habitId") ?: return@composable
         HabitDetailScreen(habitId,
-            onFinish = { navController.popBackStack() }
-        ) //추가 구현 필요할 듯
+            onFinish = { navController.popBackStack()},
+            onNavigateToHabitEdit = {habitId,profileId ->
+                navController.navigate("habit_edit/$habitId/$profileId")
+            }) //추가 구현 필요할 듯
     }
 }

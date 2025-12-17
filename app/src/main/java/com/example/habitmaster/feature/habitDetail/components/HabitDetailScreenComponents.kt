@@ -1,5 +1,6 @@
 package com.example.habitmaster.feature.habitDetail.components
 
+import android.R.attr.text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,17 +64,28 @@ fun DetailHeader(onBackClick: () -> Unit) {
 }
 
 @Composable
-fun HabitDetailTitle(title: String, startDate: String) {
+fun HabitDetailTitle(title: String, startDate: String,onEditClick: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = title,
-            fontFamily = PretendardFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = Color.White
-        )
+        Row() {
+            Text(
+                text = title,
+                fontFamily = PretendardFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(
+                onClick = { onEditClick() }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "편집"
+                )
+            }
+        }
         Text(
             text = "$startDate 시작했어요.",
             fontFamily = PretendardFamily,
