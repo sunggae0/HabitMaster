@@ -11,10 +11,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.example.habitmaster.core.data.firebase.FirebaseProfileRepository
-import com.example.habitmaster.core.model.BackupInfo
 import com.example.habitmaster.core.model.Profile
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
@@ -31,12 +29,6 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
         var showDataResetDialog by remember { mutableStateOf(false) }
         var showDataResetSecondDialog by remember { mutableStateOf(false) }
         var confirmInputText by remember { mutableStateOf("") }
-        var showDataSaveDialog by remember { mutableStateOf(false) }
-        var showDataSaveSuccessDialog by remember { mutableStateOf(false) }
-        var showDataRestoreDialog by remember { mutableStateOf(false) }
-        var backupList by remember { mutableStateOf<List<BackupInfo>>(emptyList()) }
-        var selectedBackup by remember { mutableStateOf<BackupInfo?>(null) }
-        var showRestoreConfirmDialog by remember { mutableStateOf(false) }
         var showPasswordResultDialog by remember { mutableStateOf<Boolean?>(null) } // 비밀번호 변경 결과 다이얼로그 상태
 
         val coroutineScope = rememberCoroutineScope()
@@ -56,6 +48,10 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
             onNotificationEnabledChange = { notificationEnabled = it; showNotificationDialog = true },
             isDarkMode = isDarkMode,
             onDarkModeChange = { isDarkMode = it },
+
+
+
+
             onLogoutClick = { showLogoutDialog = true },
             onDataResetClick = { showDataResetDialog = true },
         )
@@ -152,60 +148,6 @@ fun NavGraphBuilder.settingsNavGraph(navController: NavHostController) {
                     ) { Text("최종 삭제") }
                 },
                 dismissButton = { TextButton(onClick = { showDataResetSecondDialog = false }) { Text("취소") } }
-            )
-        }
-
-        if (showDataSaveDialog) {
-            AlertDialog(
-                onDismissRequest = { showDataSaveDialog = false },
-                title = { Text("데이터 저장") },
-                text = { Text("현재 데이터를 서버에 백업하시겠습니까?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = { showDataSaveDialog = false; coroutineScope.launch { repository.backupUserData(); showDataSaveSuccessDialog = true } }
-                    ) { Text("예") }
-                },
-                dismissButton = { TextButton(onClick = { showDataSaveDialog = false }) { Text("아니요") } }
-            )
-        }
-
-        if (showDataSaveSuccessDialog) {
-            AlertDialog(
-                onDismissRequest = { showDataSaveSuccessDialog = false },
-                title = { Text("완료") },
-                text = { Text("데이터가 성공적으로 저장되었습니다.") },
-                confirmButton = { TextButton(onClick = { showDataSaveSuccessDialog = false }) { Text("확인") } }
-            )
-        }
-
-        if (showDataRestoreDialog) {
-            AlertDialog(
-                onDismissRequest = { showDataRestoreDialog = false },
-                title = { Text("복구할 시점 선택") },
-                text = {
-                    LazyColumn {
-                        items(backupList) { backup ->
-                            val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(backup.createdAt))
-                            TextButton(onClick = { selectedBackup = backup; showDataRestoreDialog = false; showRestoreConfirmDialog = true }) { Text("백업: $date") }
-                        }
-                    }
-                },
-                confirmButton = { },
-                dismissButton = { TextButton(onClick = { showDataRestoreDialog = false }) { Text("취소") } }
-            )
-        }
-
-        if (showRestoreConfirmDialog) {
-            AlertDialog(
-                onDismissRequest = { showRestoreConfirmDialog = false },
-                title = { Text("데이터 복구") },
-                text = { Text("현재 모든 데이터를 덮어쓰고 선택한 시점으로 복구하시겠습니까?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = { showRestoreConfirmDialog = false; coroutineScope.launch { selectedBackup?.let { repository.restoreFromBackup(it.id) } } }
-                    ) { Text("복구") }
-                },
-                dismissButton = { TextButton(onClick = { showRestoreConfirmDialog = false }) { Text("취소") } }
             )
         }
     }

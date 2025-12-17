@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -82,6 +83,11 @@ fun HabitDetailScreen(habitId:String, onFinish: () -> Unit) {
             Column {
                 HabitTitleArea(habitName, startDate, periodValue, periodUnit, targetCount)
                 HabitDetailArea(achievementRate)
+                Button(
+                    onclick = ,
+                ){
+                    Text("달성 완료")
+                }
             }
         }
     }
